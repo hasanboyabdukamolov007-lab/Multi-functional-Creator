@@ -21,8 +21,11 @@
     "@fastify/static": "^10.1.11",
     "@mfc/core": "workspace:*",
     "fastify": "^5.12.8",
+    "mongodb": "^7.9.0",
+    "mysql2": "^3.24.6",
     "nodemailer": "^7.0.0",
     "pg": "^8.23.1",
+    "undici": "^7.30.2",
     "zod": "^4.1.0"
   },
   "devDependencies": {
