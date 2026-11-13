@@ -56,7 +56,7 @@ documented in [`apps/server/.env.example`](apps/server/.env.example).
 The repo is Vercel-ready (`vercel.json` + `scripts/vercel-build.mjs`): the web app is served from Vercel's CDN and the
 API runs as one streaming Node function.
 
-1. **Import** the GitHub repo at vercel.com → *Add New… → Project* (leave all build settings as they are).
+1. **Import** the GitHub repo at vercel.com → *Add New… → Project*. Leave the build settings as they are; the *Root Directory* can be the repo root or `apps/web` (both contain a `vercel.json`).
 2. **Database:** in the project's *Storage* tab, create a **Neon Postgres** database and connect it — this sets
    `DATABASE_URL` automatically. (Any Postgres works: Supabase, Neon, RDS… — set `DATABASE_URL` yourself.)
 3. **Environment variables** (*Settings → Environment Variables*):

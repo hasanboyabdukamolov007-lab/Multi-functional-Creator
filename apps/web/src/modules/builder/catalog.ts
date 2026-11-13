@@ -1,6 +1,7 @@
 import type { BNode } from "./model";
 import { h, lines, parts, SLOT, type Child, type Spec } from "./spec";
 import { PLACEHOLDER_IMG, SITE_ICONS } from "./icons";
+import { F, btn, svgIcon, labelled } from "./catalogHelpers";
 
 export type PropKind = "text" | "textarea" | "lines" | "number" | "select" | "boolean" | "color" | "url" | "code";
 export interface PropField {
@@ -24,28 +25,6 @@ export interface ComponentDef {
   fields: PropField[];
   render: (p: Record<string, any>, node: BNode) => Spec;
 }
-
-const F = {
-  text: (key: string, label = key): PropField => ({ key, label, kind: "text" }),
-  area: (key: string, label = key): PropField => ({ key, label, kind: "textarea" }),
-  lines: (key: string, label: string, hint: string): PropField => ({ key, label, kind: "lines", hint }),
-  num: (key: string, label = key): PropField => ({ key, label, kind: "number" }),
-  sel: (key: string, label: string, options: string[]): PropField => ({ key, label, kind: "select", options }),
-  bool: (key: string, label = key): PropField => ({ key, label, kind: "boolean" }),
-  url: (key: string, label = key): PropField => ({ key, label, kind: "url" }),
-};
-
-const btn = (text: string, href: string, variant = "primary", extra: Record<string, any> = {}): Spec =>
-  href ? h("a", { class: `btn btn-${variant}`, href, ...extra }, text) : h("button", { class: `btn btn-${variant}`, type: "button", ...extra }, text);
-
-const svgIcon = (name: string, size = 24): Spec =>
-  h(
-    "svg",
-    { viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" },
-    h("path", { d: SITE_ICONS[name] ?? SITE_ICONS.star }),
-  );
-
-const labelled = (label: string, control: Spec): Spec => h("label", { class: "field" }, ...(label ? [h("span", { class: "field-label" }, label)] : []), control);
 
 export const CATALOG: ComponentDef[] = [
   // ---------------------------------------------------------------- Layout
@@ -451,6 +430,9 @@ export const CATALOG: ComponentDef[] = [
     render: (p) => ({ tag: "div", attrs: { class: "custom-html" }, rawHtml: String(p.html ?? "") }),
   },
 ];
+
+import { EXTRA_COMPONENTS } from "./catalog2";
+CATALOG.push(...EXTRA_COMPONENTS);
 
 export const CATALOG_MAP = new Map(CATALOG.map((c) => [c.type, c]));
 export const isKnownType = (t: string) => CATALOG_MAP.has(t);

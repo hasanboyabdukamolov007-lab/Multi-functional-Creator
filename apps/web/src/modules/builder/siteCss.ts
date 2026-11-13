@@ -1,4 +1,5 @@
 import type { SiteTokens } from "./model";
+import { EXTRA_CSS } from "./catalog2";
 
 /** CSS variables for the site's design tokens. */
 export function tokenVars(t: SiteTokens): Record<string, string> {
@@ -138,4 +139,4 @@ export const SITE_CSS = `
 .site .spinner { display: inline-block; border-radius: 50%; border: 3px solid var(--color-border); border-top-color: var(--color-primary); animation: site-spin .8s linear infinite; }
 @keyframes site-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .site * { animation: none !important; transition: none !important; } }
-`;
+` + EXTRA_CSS;
