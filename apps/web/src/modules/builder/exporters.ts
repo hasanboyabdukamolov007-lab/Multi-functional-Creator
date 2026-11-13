@@ -49,7 +49,8 @@ export function nodeHtml(node: BNode, depth = 0): string {
   return htmlOf(specWithNode(node), node.children, depth);
 }
 
-export function pageHtml(doc: BuilderDoc, page: BPage): string {
+/** Full HTML document for a page. With `cssHref` the stylesheet is linked instead of inlined (multi-page sites). */
+export function pageHtml(doc: BuilderDoc, page: BPage, opts: { cssHref?: string } = {}): string {
   const vars = Object.entries(tokenVars(doc.tokens)).map(([k, v]) => `  ${k}: ${v};`).join("\n");
   const title = esc(page.title || page.name);
   const meta = [
@@ -67,13 +68,13 @@ export function pageHtml(doc: BuilderDoc, page: BPage): string {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${title}</title>
 ${meta}
-<style>
+${opts.cssHref ? `<link rel="stylesheet" href="${escAttr(opts.cssHref)}" />` : `<style>
 .site {
 ${vars}
 }
 html, body { margin: 0; }
 ${SITE_CSS.trim()}
-</style>
+</style>`}
 </head>
 <body class="site">
 ${nodeHtml(page.root, 0)}
@@ -84,11 +85,16 @@ ${nodeHtml(page.root, 0)}
 
 export function siteCss(doc: BuilderDoc): string {
   const vars = Object.entries(tokenVars(doc.tokens)).map(([k, v]) => `  ${k}: ${v};`).join("\n");
-  return `.site {\n${vars}\n}\n${SITE_CSS.trim()}\n`;
+  return `.site {\n${vars}\n}\nhtml, body { margin: 0; }\n${SITE_CSS.trim()}\n`;
 }
 
 // ------------------------------------------------------------------- React (JSX)
-const REACT_ATTR: Record<string, string> = { class: "className", for: "htmlFor", tabindex: "tabIndex", readonly: "readOnly", autoplay: "autoPlay", playsinline: "playsInline", autocomplete: "autoComplete", maxlength: "maxLength", checked: "defaultChecked", value: "defaultValue" };
+const REACT_ATTR: Record<string, string> = {
+  class: "className", for: "htmlFor", tabindex: "tabIndex", readonly: "readOnly", autoplay: "autoPlay", playsinline: "playsInline", autocomplete: "autoComplete",
+  maxlength: "maxLength", minlength: "minLength", inputmode: "inputMode", allowfullscreen: "allowFullScreen", colspan: "colSpan", rowspan: "rowSpan", srcset: "srcSet",
+  crossorigin: "crossOrigin", enctype: "encType", novalidate: "noValidate", datetime: "dateTime", spellcheck: "spellCheck", contenteditable: "contentEditable",
+  checked: "defaultChecked", value: "defaultValue",
+};
 
 export function reactAttrName(k: string, tag: string): string {
   if (REACT_ATTR[k]) {
