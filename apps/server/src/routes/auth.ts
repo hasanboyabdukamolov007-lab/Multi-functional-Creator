@@ -106,6 +106,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get("/me", async (req) => {
+    // Anonymous visitors get 200 with user: null so the sign-in page doesn't log errors.
+    if (!req.user) return { user: null, workspaces: [] };
     const user = requireUser(req);
     const workspaces = await db.query(
       `SELECT w.id, w.name, w.plan, m.role FROM memberships m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = $1 ORDER BY w.created_at`,

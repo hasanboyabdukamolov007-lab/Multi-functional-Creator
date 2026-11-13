@@ -1,6 +1,6 @@
 import { MODULES } from "../modules";
 import { registry, type AppFunction } from "./registry";
-import { BUILT_IN_THEMES, useTheme } from "./theme";
+import { BUILT_IN_THEMES, useTheme, type ThemeTokens } from "./theme";
 import { LOCALES, t, useI18n } from "./i18n";
 import { useUi, toast } from "./ui";
 import { useSession } from "./session";
@@ -123,4 +123,19 @@ export function registerCoreFunctions() {
 /** Resolve "nav.goto" titles: "Go to {name}" with a translated module name. */
 export function navTitle(labelKey: string) {
   return t("nav.goto", { name: t(labelKey) });
+}
+
+/** Panel density and corner presets applied to the active theme as a live customization. */
+export function registerPanelTweaks() {
+  const tweak = (patch: Partial<ThemeTokens>) => () => {
+    const st = useTheme.getState();
+    const th = st.active();
+    st.saveCustom(`${th.name} (custom)`, { ...th.tokens, ...patch });
+  };
+  registry.register([
+    { id: "panel.density.compact", title: "Panel density: compact", category: "Appearance", run: tweak({ density: 0.85 }) },
+    { id: "panel.density.comfortable", title: "Panel density: comfortable", category: "Appearance", run: tweak({ density: 1.15 }) },
+    { id: "panel.corners.sharp", title: "Panel corners: sharp", category: "Appearance", run: tweak({ radius: 3 }) },
+    { id: "panel.corners.round", title: "Panel corners: round", category: "Appearance", run: tweak({ radius: 16 }) },
+  ]);
 }

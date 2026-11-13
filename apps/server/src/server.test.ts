@@ -77,7 +77,8 @@ describe("API", () => {
     const again = await app.inject({ method: "POST", url: "/api/auth/verify", headers: H, payload: { token } });
     expect(again.statusCode).toBe(400);
     await app.inject({ method: "POST", url: "/api/auth/logout", headers });
-    expect((await app.inject({ method: "GET", url: "/api/auth/me", headers })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/api/auth/me", headers })).json().user).toBeNull();
+    expect((await app.inject({ method: "GET", url: "/api/w/00000000-0000-0000-0000-000000000000/secrets", headers })).statusCode).toBe(401);
   });
 
   it("stores secrets encrypted, masks them, audits reveals, rotates and rolls back", async () => {

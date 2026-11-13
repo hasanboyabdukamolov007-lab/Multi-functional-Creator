@@ -234,3 +234,41 @@ export function registerBuilderFunctions() {
 function inBuilder() {
   return window.location.pathname.startsWith("/builder");
 }
+
+/** Extra element-level style actions (typography, media, layering). */
+export function registerBuilderExtraFunctions() {
+  const fns: AppFunction[] = [
+    styleFn("italic", "italic", { fontStyle: "italic" }, ["typography"]),
+    styleFn("underline", "underline", { textDecoration: "underline" }, ["typography"]),
+    styleFn("strike", "strikethrough", { textDecoration: "line-through" }, ["typography"]),
+    styleFn("font-serif", "serif font", { fontFamily: `Georgia, "Times New Roman", serif` }, ["typography"]),
+    styleFn("font-mono", "monospace font", { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }, ["typography"]),
+    styleFn("gradient-text", "gradient text", { background: "linear-gradient(120deg, var(--color-text), var(--color-primary))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }, ["typography", "color"]),
+    styleFn("glass", "frosted glass", { background: "color-mix(in srgb, var(--color-surface) 60%, transparent)", backdropFilter: "blur(14px)", border: "1px solid color-mix(in srgb, var(--color-border) 60%, transparent)" }, ["glassmorphism", "blur"]),
+    styleFn("aspect-video", "aspect ratio 16:9", { aspectRatio: "16 / 9" }, ["media", "size"]),
+    styleFn("aspect-square", "aspect ratio 1:1", { aspectRatio: "1 / 1" }, ["media", "size"]),
+    styleFn("aspect-photo", "aspect ratio 4:3", { aspectRatio: "4 / 3" }, ["media", "size"]),
+    styleFn("fit-cover", "image fit cover", { objectFit: "cover" }, ["media", "image"]),
+    styleFn("fit-contain", "image fit contain", { objectFit: "contain" }, ["media", "image"]),
+    styleFn("cursor-pointer", "pointer cursor", { cursor: "pointer" }),
+    styleFn("transition", "smooth transitions", { transition: "all .2s ease" }, ["animation"]),
+    styleFn("relative", "position relative", { position: "relative" }, ["position"]),
+    styleFn("z-top", "bring to front (z-index)", { position: "relative", zIndex: "10" }, ["layer", "position"]),
+    styleFn("full-bleed", "full-bleed width", { width: "100vw", marginLeft: "calc(50% - 50vw)" }, ["layout", "size"]),
+  ];
+  for (const d of ["next", "previous"] as const) {
+    fns.push({
+      id: `builder.page.${d}`,
+      title: `Go to ${d} page`,
+      category: "Builder · Pages",
+      when: () => (B().doc.pages.length > 1 ? hasProject() : "Only one page"),
+      run: () => {
+        const pages = B().doc.pages;
+        const i = pages.findIndex((p) => p.id === B().page().id);
+        B().setPage(pages[(i + (d === "next" ? 1 : -1) + pages.length) % pages.length].id);
+      },
+    });
+  }
+  fns.push({ id: "builder.select-root", title: "Select page root", category: "Builder · Edit", when: hasProject, run: () => B().select(B().page().root.id) });
+  registry.register(fns);
+}

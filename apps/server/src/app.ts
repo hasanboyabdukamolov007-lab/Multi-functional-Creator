@@ -107,11 +107,13 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   // Serve the built web app (single-origin production deployment).
   if (config.webDist && fs.existsSync(path.join(config.webDist, "index.html"))) {
     const fastifyStatic = (await import("@fastify/static")).default;
-    await app.register(fastifyStatic, { root: config.webDist, wildcard: false });
+    await app.register(fastifyStatic, { root: config.webDist, wildcard: true, index: false });
+    // SPA fallback: client routes get index.html; missing API routes and asset files stay 404.
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith("/api/")) return reply.status(404).send({ error: "Not found" });
+      if (req.url.startsWith("/api/") || req.url.startsWith("/assets/")) return reply.status(404).send({ error: "Not found" });
       return reply.sendFile("index.html");
     });
+    app.get("/", (_req, reply) => reply.sendFile("index.html"));
   }
 
   return app;

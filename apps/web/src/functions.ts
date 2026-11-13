@@ -1,6 +1,6 @@
-import { registerCoreFunctions } from "./lib/coreFunctions";
-import { registerBuilderFunctions } from "./modules/builder/functions";
-import { registerStudioFunctions } from "./modules/studio/functions";
+import { registerCoreFunctions, registerPanelTweaks } from "./lib/coreFunctions";
+import { registerBuilderExtraFunctions, registerBuilderFunctions } from "./modules/builder/functions";
+import { registerStudioExtraFunctions, registerStudioFunctions } from "./modules/studio/functions";
 import { registerVaultFunctions } from "./modules/vault/functions";
 import { registerCopilotFunctions } from "./modules/copilot/functions";
 
@@ -14,4 +14,7 @@ export function registerAllFunctions() {
   registerStudioFunctions();
   registerVaultFunctions();
   registerCopilotFunctions();
+  registerPanelTweaks();
+  registerBuilderExtraFunctions();
+  registerStudioExtraFunctions();
 }

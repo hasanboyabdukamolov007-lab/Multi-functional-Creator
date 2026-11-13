@@ -223,3 +223,30 @@ export function registerStudioFunctions() {
 
   registry.register(fns);
 }
+
+/** Camera, light and selection helpers. */
+export function registerStudioExtraFunctions() {
+  const isCam = () => (S().selected()?.camera ? true : "Select a camera");
+  const isLight = () => (S().selected()?.light ? true : "Select a light");
+  const fns: AppFunction[] = [];
+  for (const [k, fov] of [["wide", 70], ["normal", 45], ["tele", 25]] as const) fns.push({ id: `studio.camera.fov-${k}`, title: `Camera lens: ${k} (${fov}°)`, category: "3D · Camera", when: isCam, run: () => S().update(S().selectedId!, { camera: { fov } }) });
+  fns.push(
+    { id: "studio.light.brighter", title: "Light: brighter (×1.5)", category: "3D · Lighting", when: isLight, run: () => { const l = S().selected()!.light!; S().update(S().selectedId!, { light: { ...l, intensity: Math.round(l.intensity * 150) / 100 } }); } },
+    { id: "studio.light.dimmer", title: "Light: dimmer (×0.66)", category: "3D · Lighting", when: isLight, run: () => { const l = S().selected()!.light!; S().update(S().selectedId!, { light: { ...l, intensity: Math.round(l.intensity * 66) / 100 } }); } },
+  );
+  for (const [k, c] of [["warm", "#ffd2a1"], ["neutral", "#ffffff"], ["cool", "#cfe0ff"]] as const) fns.push({ id: `studio.light.${k}`, title: `Light color: ${k}`, category: "3D · Lighting", when: isLight, run: () => S().update(S().selectedId!, { light: { ...S().selected()!.light!, color: c } }) });
+  for (const d of [1, -1] as const)
+    fns.push({
+      id: `studio.select.${d > 0 ? "next" : "previous"}`,
+      title: `Select ${d > 0 ? "next" : "previous"} object`,
+      category: "3D · Edit",
+      shortcut: d > 0 ? "tab" : "shift+tab",
+      when: () => (inStudio() && S().doc.objects.length ? true : "No objects"),
+      run: () => {
+        const objs = S().doc.objects;
+        const i = objs.findIndex((o) => o.id === S().selectedId);
+        S().select(objs[(i + d + objs.length) % objs.length].id);
+      },
+    });
+  registry.register(fns);
+}

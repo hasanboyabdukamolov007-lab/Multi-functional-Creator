@@ -36,7 +36,11 @@ export const useSession = create<SessionState>((set, get) => ({
   workspace: () => get().workspaces.find((w) => w.id === get().workspaceId) ?? null,
   refresh: async () => {
     try {
-      const me = await api.get<{ user: User; workspaces: WorkspaceRef[] }>("/api/auth/me");
+      const me = await api.get<{ user: User | null; workspaces: WorkspaceRef[] }>("/api/auth/me");
+      if (!me.user) {
+        set({ status: "anon", user: null, workspaces: [], workspaceId: null });
+        return;
+      }
       const stored = load<string | null>("mfc.workspace", null);
       const workspaceId = me.workspaces.find((w) => w.id === stored)?.id ?? me.workspaces[0]?.id ?? null;
       set({ status: "ready", user: me.user, workspaces: me.workspaces, workspaceId });

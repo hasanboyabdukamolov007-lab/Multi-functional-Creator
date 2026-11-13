@@ -178,3 +178,6 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
 .canvas-scroll { height: 100%; overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start;
   background-color: var(--mfc-bg); background-image: radial-gradient(color-mix(in srgb, var(--mfc-text) 9%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
 .canvas-frame { min-height: calc(100% - 4px); box-shadow: var(--mfc-shadow); border-radius: 6px; overflow: hidden; transition: width .2s ease; flex-shrink: 0; }
+.prop-grid > *, .vec3 > * { min-width: 0; }
+.prop-grid input[type="range"] { min-width: 0; width: 100%; }
+.vec3 .input { padding: 0 4px; }
