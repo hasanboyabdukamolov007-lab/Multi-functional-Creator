@@ -1,5 +1,6 @@
 import { registerCoreFunctions } from "./lib/coreFunctions";
 import { registerBuilderFunctions } from "./modules/builder/functions";
+import { registerStudioFunctions } from "./modules/studio/functions";
 
 let done = false;
 /** Register every panel function. Runs once at startup so the palette and copilot see them all. */
@@ -8,4 +9,5 @@ export function registerAllFunctions() {
   done = true;
   registerCoreFunctions();
   registerBuilderFunctions();
+  registerStudioFunctions();
 }
