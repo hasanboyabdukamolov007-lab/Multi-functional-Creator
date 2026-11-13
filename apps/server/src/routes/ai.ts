@@ -31,6 +31,7 @@ const SettingsBody = z.object({
   defaultEffort: z.enum(EFFORTS).optional(),
   webTools: z.boolean().optional(),
   keySecretId: z.string().uuid().nullable().optional(),
+  claudeEnabled: z.boolean().optional(),
 });
 
 const ProviderBody = z.object({
@@ -45,6 +46,7 @@ const ProviderChatBody = z.object({
 });
 
 interface AiSettingsRow {
+  claude_enabled: boolean;
   default_model: string;
   default_effort: string;
   web_tools: boolean;
@@ -53,7 +55,8 @@ interface AiSettingsRow {
 
 async function getSettings(db: Db, workspaceId: string): Promise<AiSettingsRow> {
   return (
-    (await db.one<AiSettingsRow>(`SELECT default_model, default_effort, web_tools, key_secret_id FROM ai_settings WHERE workspace_id = $1`, [workspaceId])) ?? {
+    (await db.one<AiSettingsRow>(`SELECT claude_enabled, default_model, default_effort, web_tools, key_secret_id FROM ai_settings WHERE workspace_id = $1`, [workspaceId])) ?? {
+      claude_enabled: false,
       default_model: DEFAULT_MODEL,
       default_effort: DEFAULT_EFFORT,
       web_tools: true,
@@ -121,6 +124,9 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     const key = await resolveAnthropicKey(db, ring, a.workspaceId, config.anthropicApiKey);
     const providers = await db.query(`SELECT id, name, kind, base_url, model, key_secret_id, created_at FROM ai_providers WHERE workspace_id = $1 ORDER BY created_at`, [a.workspaceId]);
     return {
+      // Forge (the built-in engine) runs in the browser and needs nothing from the server.
+      // Claude is an optional add-on that an admin must switch on.
+      claudeEnabled: s.claude_enabled,
       builtIn: { configured: key.source !== null, keySource: key.source, keySecretName: key.secretName ?? null },
       settings: { defaultModel: s.default_model, defaultEffort: s.default_effort, webTools: s.web_tools, keySecretId: s.key_secret_id },
       models: MODELS.map(({ id, label, description, efforts }) => ({ id, label, description, efforts })),
@@ -142,8 +148,8 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     );
     await db.query(
       `UPDATE ai_settings SET default_model = coalesce($2, default_model), default_effort = coalesce($3, default_effort), web_tools = coalesce($4, web_tools),
-        key_secret_id = CASE WHEN $5::boolean THEN $6::uuid ELSE key_secret_id END, updated_at = now() WHERE workspace_id = $1`,
-      [a.workspaceId, body.defaultModel ?? null, body.defaultEffort ?? null, body.webTools ?? null, body.keySecretId !== undefined, body.keySecretId ?? null],
+        key_secret_id = CASE WHEN $5::boolean THEN $6::uuid ELSE key_secret_id END, claude_enabled = coalesce($7, claude_enabled), updated_at = now() WHERE workspace_id = $1`,
+      [a.workspaceId, body.defaultModel ?? null, body.defaultEffort ?? null, body.webTools ?? null, body.keySecretId !== undefined, body.keySecretId ?? null, body.claudeEnabled ?? null],
     );
     await audit(db, req, "ai.settings", { meta: body });
     return { ok: true };
@@ -158,6 +164,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     const a = requirePerm(req, "ai.use");
     const body = parse(TurnBody, req.body);
     const settings = await getSettings(db, a.workspaceId);
+    if (!settings.claude_enabled) throw new HttpError(412, "The Claude add-on is turned off. An admin can enable it in Settings → AI copilot; Forge works without it.", "claude_disabled");
     const model = modelInfo(body.model ?? settings.default_model) ?? modelInfo(DEFAULT_MODEL)!;
     const effort = (body.effort ?? settings.default_effort) as (typeof EFFORTS)[number];
     const key = await resolveAnthropicKey(db, ring, a.workspaceId, config.anthropicApiKey);

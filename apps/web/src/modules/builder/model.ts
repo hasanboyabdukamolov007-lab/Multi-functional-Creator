@@ -20,6 +20,8 @@ export interface SiteTokens {
   font: string;
   headingFont: string;
   maxWidth: string;
+  /** Optional corner radius for all buttons (falls back to a fraction of radius). */
+  buttonRadius?: string;
 }
 
 export interface BPage {

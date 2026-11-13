@@ -109,4 +109,9 @@ CREATE TABLE ai_providers (
   created_at timestamptz NOT NULL DEFAULT now()
 )`,
   },
+  {
+    id: 2,
+    name: "ai-addons-opt-in",
+    sql: `ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS claude_enabled boolean NOT NULL DEFAULT false`,
+  },
 ];

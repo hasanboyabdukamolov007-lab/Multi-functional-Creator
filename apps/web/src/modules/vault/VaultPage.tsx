@@ -379,7 +379,6 @@ export default function VaultPage() {
     [secrets, env, query, alertsOnly],
   );
   const alerts = (secrets ?? []).filter((s) => s.status !== "ok").length;
-  const hasCopilotKey = (secrets ?? []).some((s) => s.name === "ANTHROPIC_API_KEY" && !s.project_id);
   const canWrite = can(role, "secrets.write");
 
   return (
@@ -400,13 +399,6 @@ export default function VaultPage() {
         </div>
       </div>
 
-      {secrets && !hasCopilotKey && canWrite && (
-        <div className="card row" style={{ marginBottom: 16, borderColor: "color-mix(in srgb, var(--mfc-accent) 40%, var(--mfc-border))" }}>
-          <I.IconSparkles size={18} style={{ color: "var(--mfc-accent)" }} />
-          <span className="grow">{t("vault.copilotKeyHint")}</span>
-          <button className="btn btn-sm btn-primary" onClick={() => open("new", { name: "ANTHROPIC_API_KEY", environment: "production" })}>{t("vault.copilotKey")}</button>
-        </div>
-      )}
 
       <div className="row wrap" style={{ marginBottom: 12 }}>
         <div className="tabs" style={{ border: 0, padding: 0 }}>

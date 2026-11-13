@@ -4,11 +4,19 @@ import { api, ApiError, postSSE } from "../../lib/api";
 import { ws, useSession } from "../../lib/session";
 import { load, remove, save } from "../../lib/storage";
 import { executeTool, panelContext, toolDefinitions } from "./tools";
+import { runForge, type StepResult } from "./engine/engine";
 
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Effort = (typeof EFFORTS)[number];
 
+export interface ForgeMsg {
+  role: "user" | "forge";
+  text: string;
+  steps?: StepResult[];
+}
+
 export interface AiStatus {
+  claudeEnabled: boolean;
   builtIn: { configured: boolean; keySource: "vault" | "server" | null; keySecretName: string | null };
   settings: { defaultModel: string; defaultEffort: Effort; webTools: boolean; keySecretId: string | null };
   models: Array<{ id: string; label: string; description: string; efforts: string[] }>;
@@ -43,7 +51,9 @@ interface CopilotState {
   error: string | null;
   model: string | null;
   effort: Effort | null;
-  provider: string; // "builtin" or an add-on provider id
+  /** "forge" (built-in engine, default), "claude" (optional add-on) or an add-on provider id. */
+  provider: string;
+  forge: ForgeMsg[];
   simple: SimpleMsg[];
   abort: AbortController | null;
   usage: { input: number; output: number; cacheRead: number };
@@ -60,14 +70,14 @@ interface CopilotState {
 const MAX_STEPS = 40;
 const storeKey = () => `mfc.copilot.${useSession.getState().workspaceId ?? "none"}`;
 
-function persist(s: Pick<CopilotState, "messages" | "toolRuns" | "simple">) {
-  const json = JSON.stringify(s);
-  if (json.length > 3_000_000) return; // keep localStorage usage sane; history stays in memory
-  save(storeKey(), s);
+function persist(s: Pick<CopilotState, "messages" | "toolRuns" | "simple" | "forge">) {
+  const data = { messages: s.messages, toolRuns: s.toolRuns, simple: s.simple, forge: s.forge.slice(-100) };
+  if (JSON.stringify(data).length > 3_000_000) return; // keep localStorage usage sane; history stays in memory
+  save(storeKey(), data);
 }
 
 export const useCopilot = create<CopilotState>((set, get) => {
-  const restored = load<Partial<Pick<CopilotState, "messages" | "toolRuns" | "simple">>>(storeKey(), {});
+  const restored = load<Partial<Pick<CopilotState, "messages" | "toolRuns" | "simple" | "forge">>>(storeKey(), {});
 
   /** Stream one model turn; returns the final assistant message. */
   async function turn(signal: AbortSignal): Promise<BetaMessage> {
@@ -158,6 +168,24 @@ export const useCopilot = create<CopilotState>((set, get) => {
     }
   }
 
+  async function sendForge(text: string) {
+    set({ forge: [...get().forge, { role: "user", text }, { role: "forge", text: "", steps: [] }], running: true, error: null });
+    const updateLast = (patch: Partial<ForgeMsg>) => {
+      const f = [...get().forge];
+      f[f.length - 1] = { ...f[f.length - 1], ...patch };
+      set({ forge: f });
+    };
+    try {
+      const reply = await runForge(text, (steps) => updateLast({ steps }));
+      updateLast({ text: reply.text, steps: reply.steps });
+    } catch (e) {
+      updateLast({ text: (e as Error).message });
+    } finally {
+      set({ running: false });
+      persist(get());
+    }
+  }
+
   async function sendSimple(text: string) {
     const ac = new AbortController();
     const history = [...get().simple, { role: "user" as const, content: text }];
@@ -188,7 +216,8 @@ export const useCopilot = create<CopilotState>((set, get) => {
     error: null,
     model: load<string | null>("mfc.copilot.model", null),
     effort: load<Effort | null>("mfc.copilot.effort", null),
-    provider: load("mfc.copilot.provider", "builtin"),
+    provider: ((p: string) => (p === "builtin" ? "forge" : p))(load("mfc.copilot.provider", "forge")),
+    forge: restored.forge ?? [],
     simple: restored.simple ?? [],
     abort: null,
     usage: { input: 0, output: 0, cacheRead: 0 },
@@ -196,7 +225,9 @@ export const useCopilot = create<CopilotState>((set, get) => {
     loadStatus: async () => {
       try {
         const status = await api.get<AiStatus>(ws("/ai/status"));
-        const provider = get().provider !== "builtin" && !status.providers.some((p) => p.id === get().provider) ? "builtin" : get().provider;
+        const cur = get().provider;
+        const valid = cur === "forge" || (cur === "claude" && status.claudeEnabled) || status.providers.some((p) => p.id === cur);
+        const provider = valid ? cur : "forge";
         set({ status, provider });
       } catch {
         set({ status: null });
@@ -204,14 +235,16 @@ export const useCopilot = create<CopilotState>((set, get) => {
     },
     send: async (text) => {
       if (get().running || !text.trim()) return;
-      if (get().provider === "builtin") await sendBuiltIn(text.trim());
+      const p = get().provider;
+      if (p === "forge") await sendForge(text.trim());
+      else if (p === "claude") await sendBuiltIn(text.trim());
       else await sendSimple(text.trim());
     },
     stop: () => get().abort?.abort(),
     reset: () => {
       get().abort?.abort();
       remove(storeKey());
-      set({ messages: [], toolRuns: {}, simple: [], error: null, live: null, usage: { input: 0, output: 0, cacheRead: 0 } });
+      set({ messages: [], toolRuns: {}, simple: [], forge: [], error: null, live: null, usage: { input: 0, output: 0, cacheRead: 0 } });
     },
     setModel: (model) => {
       save("mfc.copilot.model", model);
@@ -231,6 +264,6 @@ export const useCopilot = create<CopilotState>((set, get) => {
 // Switch conversation when the workspace changes.
 useSession.subscribe((s, prev) => {
   if (s.workspaceId === prev.workspaceId) return;
-  const restored = load<Partial<Pick<CopilotState, "messages" | "toolRuns" | "simple">>>(storeKey(), {});
+  const restored = load<Partial<Pick<CopilotState, "messages" | "toolRuns" | "simple" | "forge">>>(storeKey(), {});
   useCopilot.setState({ messages: restored.messages ?? [], toolRuns: restored.toolRuns ?? {}, simple: restored.simple ?? [], status: null, error: null });
 });

@@ -14,6 +14,7 @@ export function tokenVars(t: SiteTokens): Record<string, string> {
     "--font": t.font,
     "--font-heading": t.headingFont,
     "--max-width": t.maxWidth,
+    ...(t.buttonRadius ? { "--button-radius": t.buttonRadius } : {}),
   };
 }
 
@@ -48,7 +49,7 @@ export const SITE_CSS = `
 .site .text-sm { font-size: .875rem; } .site .text-base { font-size: 1rem; } .site .text-lg { font-size: 1.125rem; } .site .text-xl { font-size: 1.3rem; }
 .site .box { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 24px; }
 .site .divider { border: 0; height: 1px; background: var(--color-border); margin: 24px 0; }
-.site .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: calc(var(--radius) * .75); font-weight: 600; font-size: .95rem; line-height: 1.2;
+.site .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: var(--button-radius, calc(var(--radius) * .75)); font-weight: 600; font-size: .95rem; line-height: 1.2;
   border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: transform .08s ease, filter .12s ease, background .12s; font-family: inherit; }
 .site .btn:hover { filter: brightness(1.06); } .site .btn:active { transform: translateY(1px); }
 .site .btn-primary { background: var(--color-primary); color: var(--color-primary-text); }

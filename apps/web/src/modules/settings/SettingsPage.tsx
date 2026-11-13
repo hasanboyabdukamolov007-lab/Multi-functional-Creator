@@ -232,30 +232,45 @@ function AiSettings() {
   };
   return (
     <div className="col" style={{ gap: 20 }}>
-      <div className="card col" style={{ gap: 12 }}>
+      <div className="card col" style={{ gap: 8, borderColor: "color-mix(in srgb, var(--mfc-success) 45%, var(--mfc-border))" }}>
         <div className="row">
           <I.IconSparkles size={18} style={{ color: "var(--mfc-accent)" }} />
-          <div className="card-title grow" style={{ margin: 0 }}>{t("copilot.builtIn")}</div>
-          <span className={`badge ${status.builtIn.configured ? "badge-success" : "badge-warning"}`}>{status.builtIn.configured ? `${t("settings.keySource")}: ${status.builtIn.keySource === "vault" ? `vault (${status.builtIn.keySecretName})` : "server environment"}` : t("copilot.notConfigured")}</span>
+          <div className="card-title grow" style={{ margin: 0 }}>{t("settings.forgeTitle")}</div>
+          <span className="badge badge-success">On · no AI</span>
         </div>
-        {!status.builtIn.configured && <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => runFunction("vault.copilot-key")}><I.IconVault size={14} /> {t("copilot.configure")}</button>}
-        <div className="prop-grid" style={{ gridTemplateColumns: "180px 1fr", maxWidth: 640 }}>
-          <label>Default model</label>
-          <select className="select input-sm" disabled={!editable} value={status.settings.defaultModel} onChange={(e) => save({ defaultModel: e.target.value })}>
-            {status.models.map((m) => <option key={m.id} value={m.id}>{m.label} — {m.description}</option>)}
-          </select>
-          <label>Default effort</label>
-          <select className="select input-sm" disabled={!editable} value={status.settings.defaultEffort} onChange={(e) => save({ defaultEffort: e.target.value })}>
-            {["low", "medium", "high", "xhigh", "max"].map((e) => <option key={e}>{e}</option>)}
-          </select>
-          <label>{t("settings.webTools")}</label>
-          <input type="checkbox" disabled={!editable} checked={status.settings.webTools} onChange={(e) => save({ webTools: e.target.checked })} />
-          <label>Key secret</label>
-          <select className="select input-sm" disabled={!editable} value={status.settings.keySecretId ?? ""} onChange={(e) => save({ keySecretId: e.target.value || null })}>
-            <option value="">Auto (ANTHROPIC_API_KEY in the vault)</option>
-            {secrets.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.environment}</option>)}
-          </select>
+        <p className="hint">{t("settings.forgeText")}</p>
+      </div>
+
+      <div className="section-label">{t("settings.addons")}</div>
+      <div className="card col" style={{ gap: 12 }}>
+        <div className="row">
+          <label className="row grow" style={{ gap: 8, cursor: editable ? "pointer" : "default" }}>
+            <input type="checkbox" disabled={!editable} checked={status.claudeEnabled} onChange={(e) => save({ claudeEnabled: e.target.checked })} />
+            <strong>{t("copilot.claudeAddon")}</strong>
+          </label>
+          {status.claudeEnabled && <span className={`badge ${status.builtIn.configured ? "badge-success" : "badge-warning"}`}>{status.builtIn.configured ? `${t("settings.keySource")}: ${status.builtIn.keySource === "vault" ? `vault (${status.builtIn.keySecretName})` : "server environment"}` : t("copilot.notConfigured")}</span>}
         </div>
+        <p className="hint">{t("settings.claudeToggle")}</p>
+        {status.claudeEnabled && !status.builtIn.configured && <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => runFunction("vault.copilot-key")}><I.IconVault size={14} /> {t("copilot.configure")}</button>}
+        {status.claudeEnabled && (
+          <div className="prop-grid" style={{ gridTemplateColumns: "180px 1fr", maxWidth: 640 }}>
+            <label>Default model</label>
+            <select className="select input-sm" disabled={!editable} value={status.settings.defaultModel} onChange={(e) => save({ defaultModel: e.target.value })}>
+              {status.models.map((m) => <option key={m.id} value={m.id}>{m.label} — {m.description}</option>)}
+            </select>
+            <label>Default effort</label>
+            <select className="select input-sm" disabled={!editable} value={status.settings.defaultEffort} onChange={(e) => save({ defaultEffort: e.target.value })}>
+              {["low", "medium", "high", "xhigh", "max"].map((e) => <option key={e}>{e}</option>)}
+            </select>
+            <label>{t("settings.webTools")}</label>
+            <input type="checkbox" disabled={!editable} checked={status.settings.webTools} onChange={(e) => save({ webTools: e.target.checked })} />
+            <label>Key secret</label>
+            <select className="select input-sm" disabled={!editable} value={status.settings.keySecretId ?? ""} onChange={(e) => save({ keySecretId: e.target.value || null })}>
+              <option value="">Auto (ANTHROPIC_API_KEY in the vault)</option>
+              {secrets.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.environment}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="card col" style={{ gap: 12 }}>

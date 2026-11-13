@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useCopilot, EFFORTS, type Effort, type ToolRun } from "./agent";
+import { useCopilot, EFFORTS, type Effort, type ForgeMsg, type ToolRun } from "./agent";
 import { STARTERS } from "./starters";
 import { useT } from "../../lib/i18n";
 import { runFunction } from "../../lib/registry";
@@ -92,6 +92,25 @@ function AssistantBlocks({ blocks, toolRuns }: { blocks: Block[]; toolRuns: Reco
   );
 }
 
+function ForgeSteps({ msg, running }: { msg: ForgeMsg; running: boolean }) {
+  // The first paragraph is the summary line ("Done. Here's what I did:"); it belongs above the steps.
+  const hasSteps = (msg.steps ?? []).length > 0;
+  const [head, ...rest] = msg.text.split("\n\n");
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      {hasSteps && head && <Md text={head} />}
+      {(msg.steps ?? []).map((st, i) => (
+        <div key={i} className="card row" style={{ padding: "6px 10px", fontSize: 12, gap: 6 }}>
+          {st.status === "ok" ? <I.IconCheck size={13} style={{ color: "var(--mfc-success)" }} /> : <I.IconWarning size={13} style={{ color: "var(--mfc-danger)" }} />}
+          <span className="grow">{st.label}</span>
+          {st.detail && <span className="muted ellipsis" style={{ maxWidth: 180 }} title={st.detail}>{st.detail}</span>}
+        </div>
+      ))}
+      {(hasSteps ? rest.join("\n\n") : msg.text) ? <Md text={hasSteps ? rest.join("\n\n") : msg.text} /> : running && !hasSteps ? <div className="row small muted"><I.IconSpinner size={13} className="spin" /> Working…</div> : null}
+    </div>
+  );
+}
+
 export default function CopilotPanel() {
   const t = useT();
   const c = useCopilot();
@@ -114,12 +133,13 @@ export default function CopilotPanel() {
     setInput("");
     void c.send(text);
   };
-  const builtin = c.provider === "builtin";
+  const forge = c.provider === "forge";
+  const builtin = c.provider === "claude";
   const unconfigured = builtin && c.status && !c.status.builtIn.configured;
   const models = c.status?.models ?? [];
   const model = c.model ?? c.status?.settings.defaultModel ?? "claude-opus-5-5";
   const effort = c.effort ?? c.status?.settings.defaultEffort ?? "high";
-  const empty = builtin ? c.messages.length === 0 : c.simple.length === 0;
+  const empty = forge ? c.forge.length === 0 : builtin ? c.messages.length === 0 : c.simple.length === 0;
 
   return (
     <div className="col" style={{ height: "100%", gap: 0 }}>
@@ -130,7 +150,8 @@ export default function CopilotPanel() {
       </div>
       <div className="row" style={{ padding: "6px 10px", gap: 6, borderBottom: "1px solid var(--mfc-border)", flexWrap: "wrap" }}>
         <select className="select input-sm" style={{ flex: "1 1 120px" }} value={c.provider} onChange={(e) => c.setProvider(e.target.value)} aria-label={t("copilot.provider")}>
-          <option value="builtin">{t("copilot.builtIn")}</option>
+          <option value="forge">{t("copilot.forge")}</option>
+          {c.status?.claudeEnabled && <option value="claude">{t("copilot.claudeAddon")}</option>}
           {c.status?.providers.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} · {p.model}
@@ -166,6 +187,7 @@ export default function CopilotPanel() {
         )}
         {empty && (
           <div className="col" style={{ gap: 10 }}>
+            {forge && <div className="badge badge-success" style={{ whiteSpace: "normal", padding: "6px 10px" }}><I.IconShield size={12} /> {t("copilot.forgeLocal")}</div>}
             <p className="muted">{t("copilot.empty")}</p>
             <div className="col" style={{ gap: 6 }}>
               {STARTERS.slice(0, 6).map((s) => (
@@ -177,7 +199,15 @@ export default function CopilotPanel() {
           </div>
         )}
 
-        {builtin
+        {forge &&
+          c.forge.map((m, i) =>
+            m.role === "user" ? (
+              <div key={i} className="card" style={{ padding: "8px 12px", alignSelf: "flex-end", maxWidth: "90%", background: "var(--mfc-accent-soft)", whiteSpace: "pre-wrap" }}>{m.text}</div>
+            ) : (
+              <ForgeSteps key={i} msg={m} running={c.running && i === c.forge.length - 1} />
+            ),
+          )}
+        {forge ? null : builtin
           ? c.messages.map((m, i) => {
               if (m.role === "user") {
                 if (typeof m.content === "string") return <div key={i} className="card" style={{ padding: "8px 12px", alignSelf: "flex-end", maxWidth: "90%", background: "var(--mfc-accent-soft)" }}>{m.content}</div>;

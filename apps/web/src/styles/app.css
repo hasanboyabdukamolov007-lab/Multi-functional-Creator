@@ -131,7 +131,7 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
 .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--mfc-muted); margin: 12px 0 6px; font-weight: 600; }
 .prop-grid { display: grid; grid-template-columns: 92px 1fr; gap: 6px 8px; align-items: center; }
 .prop-grid > label { font-size: 12px; color: var(--mfc-muted); }
-.vec3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.vec3 { display: grid; grid-template-columns: repeat(3, minmax(40px, 1fr)); gap: 4px; }
 .color-input { width: 34px; height: 28px; padding: 0; border: 1px solid var(--mfc-border); border-radius: 6px; background: none; cursor: pointer; }
 
 /* Overlays */

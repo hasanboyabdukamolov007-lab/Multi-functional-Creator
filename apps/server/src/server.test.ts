@@ -151,14 +151,19 @@ describe("API", () => {
     expect(r.json().findings[0].ruleId).toBe("aws-access-key");
   });
 
-  it("reports the built-in copilot as unconfigured until a key is in the vault", async () => {
+  it("keeps every AI model off by default; Claude is an opt-in add-on that also needs a key", async () => {
     const { headers, ws } = await login("ai@example.com");
     const s1 = (await app.inject({ method: "GET", url: `/api/w/${ws}/ai/status`, headers })).json();
+    expect(s1.claudeEnabled).toBe(false);
     expect(s1.builtIn.configured).toBe(false);
     expect(s1.providers).toEqual([]);
-    expect(s1.settings.defaultModel).toBe("claude-opus-5-5");
+    const off = await app.inject({ method: "POST", url: `/api/w/${ws}/ai/turn`, headers, payload: { messages: [{ role: "user", content: "hi" }] } });
+    expect(off.statusCode).toBe(412);
+    expect(off.json().code).toBe("claude_disabled");
+    await app.inject({ method: "PUT", url: `/api/w/${ws}/ai/settings`, headers, payload: { claudeEnabled: true } });
     const turn = await app.inject({ method: "POST", url: `/api/w/${ws}/ai/turn`, headers, payload: { messages: [{ role: "user", content: "hi" }] } });
     expect(turn.statusCode).toBe(412);
+    expect(turn.json().code).toBe("ai_unconfigured");
     await app.inject({ method: "POST", url: `/api/w/${ws}/secrets`, headers, payload: { name: "ANTHROPIC_API_KEY", value: "sk-ant-test", environment: "production" } });
     const s2 = (await app.inject({ method: "GET", url: `/api/w/${ws}/ai/status`, headers })).json();
     expect(s2.builtIn).toMatchObject({ configured: true, keySource: "vault", keySecretName: "ANTHROPIC_API_KEY" });

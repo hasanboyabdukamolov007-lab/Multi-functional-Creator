@@ -15,7 +15,7 @@ Everything in the panel is a registered *function* (currently **522**): reachabl
 | **Builder** | 54 components (layout, typography, media, forms, data, navigation, sections, feedback, custom HTML) defined once and rendered to the canvas, **HTML** and **React**. Drag-and-drop canvas + layers tree, double-click inline text editing, inspector, multiple pages, site design tokens, 9 templates (SaaS landing, admin dashboard, portfolio, pricing, blog, contact, coming soon, e-commerce, mobile app), desktop/tablet/mobile preview, undo/redo, clipboard, Monaco code panel with **two-way** JSON sync, leak scan on every export, autosave. |
 | **3D Studio** | 14 primitives, 6 extruded shapes with bevel, Loop subdivision, physical (PBR) materials with 24 presets, 5 light types and lighting rigs, offline studio/sunset/night/warehouse environments, shadows, fog, transform gizmo (world/local, snapping), outliner, keyframe **timeline** with 8 easings and auto-key, scene presets, import **GLB/GLTF/OBJ/FBX/STL**, export **GLB/GLTF/OBJ/STL/PNG/JSON**. |
 | **Secrets Vault** | AES-256-GCM **envelope encryption** (fresh data key per version, master key outside the DB, AAD-bound ciphertexts, master-key rotation), per-environment (dev/staging/prod) and per-project scopes, masked values with **audited** reveal/copy, versions + rollback, expiry & rotation alerts, `.env` import/export, deploy-time resolution (project overrides workspace), leak scanner. |
-| **Forge copilot** | Agentic Claude copilot (default **Claude Opus 5.5**; Fable 5.2 / Sonnet 5.5 / Haiku 5.5 selectable, effort low→max) with 22 workspace tools: inspect state, search & run any panel function, create/open projects, generate and edit pages, model/animate 3D scenes, set themes; plus web search & fetch. Streams thinking summaries and tool activity. Its API key lives in the vault. **Other AI providers are optional**: OpenAI-compatible endpoints can be added in Settings → AI; none are enabled by default. |
+| **Forge copilot** | **Works on its own — no AI model, no API key.** A built-in engine that understands English, O‘zbekcha and Русский, plans multi-step requests and carries them out with the panel's own tools: industry-aware pages in 12 domains (landing, dashboard, store, portfolio, blog, pricing, contact, coming soon, mobile) written in your language, component inserts and restyling, site palettes, 3D scenes from descriptions (shapes, counts, colors, 24 materials, layouts, pedestal, lighting, environments, animations), panel themes, navigation, vault audits, leak scans, exports and any of 500+ functions. **AI add-ons are optional and off by default**: an admin can enable Claude (agentic, with web search) or add OpenAI-compatible providers in Settings → AI. |
 | **Shell** | 12 built-in themes + live **theme editor** (import/export), English / O‘zbekcha / Русский, command palette, shortcuts, dockable/resizable panels, onboarding tour, toasts. |
 | **Teams** | Passwordless **magic-link** sign-in, multi-tenant workspaces, owner/admin/editor/viewer roles, **audit log** of sign-ins, reveals, exports and settings changes. |
 
@@ -35,7 +35,7 @@ Open http://localhost:5173, enter any email and click **Open sign-in link** (in 
 shown on screen and printed in the server log). Data is stored in an embedded PostgreSQL (PGlite) under
 `apps/server/data/`, and a development vault key is generated there automatically.
 
-To enable Forge, add a secret named `ANTHROPIC_API_KEY` in the Secrets Vault (the copilot panel has a one-click button).
+Forge works immediately — press <kbd>Ctrl/⌘ J</kbd> and describe what you want. Optional: to use Claude as an add-on, enable it in Settings → AI and add `ANTHROPIC_API_KEY` to the Secrets Vault.
 
 ## Production (single process)
 
@@ -65,7 +65,7 @@ API runs as one streaming Node function.
    - `SMTP_URL` — for sign-in emails, e.g. Gmail with an app password:
      `smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465`
    - `MAIL_FROM` — e.g. `Multi-functional Creator <you@gmail.com>`
-4. **Redeploy**, open your `*.vercel.app` URL and sign in. Add `ANTHROPIC_API_KEY` in the Secrets Vault to enable Forge.
+4. **Redeploy**, open your `*.vercel.app` URL and sign in. Forge works right away; AI add-ons are optional.
 
 Limits on Vercel: request bodies are capped at 4.5 MB (so large imported 3D models can't be saved until the asset
 manager ships), and a single copilot turn can run up to 300 s.

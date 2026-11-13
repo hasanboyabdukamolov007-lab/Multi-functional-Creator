@@ -20,7 +20,7 @@ Target: **500+ functions**, all reachable from the command palette.
 | 10 | 3D | Pro web 3D studio (Three.js): primitives, mesh editing (extrude/bevel/subdivide), PBR materials, lights, cameras, keyframe timeline + curve editor, GLTF/OBJ/FBX import/export, embeddable scenes |
 | 11 | Motion | UI micro-interactions, timeline motion editor, Lottie/SVG animation, MP4/WebM/GIF export |
 | 12 | Deploy | Vercel/Netlify, own VPS/Docker (SSH, Nginx, SSL), AWS/GCP/Railway, GitHub + App Store/Google Play (Expo EAS) |
-| 13 | AI | Built-in expert-level agentic copilot that works on its own: plans, generates, debugs, designs, writes copy, builds 3D scenes, drives every panel function. Runs on Claude out of the box. Other AI providers are **optional add-ons** the user *can* add in Settings — none are enabled by default. API keys live in the vault |
+| 13 | AI | **Forge**, a built-in engine that works on its own with **no AI model by default** (not even Claude): multilingual request understanding, planning and execution through panel tools. AI models — Claude or OpenAI-compatible providers — are **optional add-ons**, off until an admin enables them. API keys live in the vault |
 | 14 | Panel style | Fully themeable — built-in themes + theme editor |
 | 15 | Languages | English, Uzbek (Latin), Russian; i18n-ready for more |
 | 16 | Library | 100+ UI components, project templates, 3D asset library, marketplace/sharing |

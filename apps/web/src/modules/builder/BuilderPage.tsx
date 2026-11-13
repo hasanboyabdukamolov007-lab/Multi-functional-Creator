@@ -141,6 +141,7 @@ function PagesAndTokens() {
     ["muted", "Muted text", "color"],
     ["border", "Border", "color"],
     ["radius", "Radius", "text"],
+    ["buttonRadius", "Button radius", "text"],
     ["maxWidth", "Max width", "text"],
     ["font", "Body font", "text"],
     ["headingFont", "Heading font", "text"],
@@ -171,11 +172,11 @@ function PagesAndTokens() {
             <label>{label}</label>
             {kind === "color" ? (
               <div className="row" style={{ gap: 6 }}>
-                <input className="color-input" type="color" value={/^#[0-9a-f]{6}$/i.test(doc.tokens[k]) ? doc.tokens[k] : "#000000"} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
-                <input className="input input-sm" value={doc.tokens[k]} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
+                <input className="color-input" type="color" value={/^#[0-9a-f]{6}$/i.test(doc.tokens[k] ?? "") ? doc.tokens[k] : "#000000"} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
+                <input className="input input-sm" value={doc.tokens[k] ?? ""} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
               </div>
             ) : (
-              <input className="input input-sm" value={doc.tokens[k]} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
+              <input className="input input-sm" value={doc.tokens[k] ?? ""} placeholder={k === "buttonRadius" ? "auto" : undefined} onChange={(e) => st.setTokens({ [k]: e.target.value })} />
             )}
           </div>
         ))}
