@@ -68,6 +68,7 @@ interface StudioState {
   toggleStats: () => void;
 }
 
+let opening: { id: string; promise: Promise<void> } | null = null;
 const autosave = createAutosave(1000);
 const HISTORY = 80;
 
@@ -117,22 +118,32 @@ export const useStudio = create<StudioState>((set, get) => {
 
     selected: () => get().doc.objects.find((o) => o.id === get().selectedId) ?? null,
 
-    open: async (projectId) => {
-      await autosave.flush();
-      set({ loading: true });
-      try {
-        const p = await projectsApi.get<SceneDoc>(projectId);
-        let doc = p.data as SceneDoc;
-        if (!isSceneDoc(doc)) {
-          doc = newScene();
-          await projectsApi.save(projectId, { data: doc });
+    open: (projectId) => {
+      // Concurrent opens of the same project (e.g. a template action and the page mounting)
+      // share one load, so a second load can't overwrite edits made after the first.
+      if (opening?.id === projectId) return opening.promise;
+      const load = async () => {
+        await autosave.flush();
+        set({ loading: true });
+        try {
+          const p = await projectsApi.get<SceneDoc>(projectId);
+          let doc = p.data as SceneDoc;
+          if (!isSceneDoc(doc)) {
+            doc = newScene();
+            await projectsApi.save(projectId, { data: doc });
+          }
+          const { assets = {}, ...core } = doc;
+          set({ projectId, projectName: p.name, doc: core, assets, selectedId: null, past: [], future: [], time: 0, playing: false, saveState: "saved", loading: false });
+        } catch (e) {
+          set({ loading: false });
+          throw e;
         }
-        const { assets = {}, ...core } = doc;
-        set({ projectId, projectName: p.name, doc: core, assets, selectedId: null, past: [], future: [], time: 0, playing: false, saveState: "saved", loading: false });
-      } catch (e) {
-        set({ loading: false });
-        throw e;
-      }
+      };
+      const promise = load().finally(() => {
+        if (opening?.promise === promise) opening = null;
+      });
+      opening = { id: projectId, promise };
+      return promise;
     },
 
     mutate: (fn, coalesceKey) => {

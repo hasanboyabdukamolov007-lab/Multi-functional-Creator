@@ -23,11 +23,12 @@ function wrap(q: Querier): Pick<Db, "query" | "one"> {
   };
 }
 
-export async function openDb(opts: { databaseUrl?: string; dataDir: string; inMemory?: boolean }): Promise<Db> {
+export async function openDb(opts: { databaseUrl?: string; dataDir: string; inMemory?: boolean; serverless?: boolean }): Promise<Db> {
   let db: Db;
   if (opts.databaseUrl) {
     const pg = await import("pg");
-    const pool = new pg.default.Pool({ connectionString: opts.databaseUrl, max: 10 });
+    // Serverless instances are many and short-lived: keep each one's pool small.
+    const pool = new pg.default.Pool({ connectionString: opts.databaseUrl, max: Number(process.env.PG_POOL_MAX ?? (opts.serverless ? 3 : 10)), idleTimeoutMillis: 10_000 });
     const w = wrap(pool);
     db = {
       kind: "postgres",
@@ -70,13 +71,15 @@ export async function openDb(opts: { databaseUrl?: string; dataDir: string; inMe
 }
 
 async function migrate(db: Db) {
-  await db.query(`CREATE TABLE IF NOT EXISTS schema_migrations (id integer PRIMARY KEY, name text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`);
-  const done = new Set((await db.query<{ id: number }>(`SELECT id FROM schema_migrations`)).map((r) => r.id));
-  for (const m of MIGRATIONS) {
-    if (done.has(m.id)) continue;
-    await db.tx(async (t) => {
+  // One transaction under an advisory lock, so instances starting at the same time don't race.
+  await db.tx(async (t) => {
+    await t.query(`SELECT pg_advisory_xact_lock(727274)`);
+    await t.query(`CREATE TABLE IF NOT EXISTS schema_migrations (id integer PRIMARY KEY, name text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`);
+    const done = new Set((await t.query<{ id: number }>(`SELECT id FROM schema_migrations`)).map((r) => r.id));
+    for (const m of MIGRATIONS) {
+      if (done.has(m.id)) continue;
       for (const stmt of m.sql.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean)) await t.query(stmt);
       await t.query(`INSERT INTO schema_migrations (id, name) VALUES ($1, $2)`, [m.id, m.name]);
-    });
-  }
+    }
+  });
 }

@@ -38,7 +38,7 @@ export default function LoginPage() {
               {sent.devLink && (
                 <>
                   <p className="hint">{t("login.devNote")}</p>
-                  <a className="btn btn-primary" href={sent.devLink}>
+                  <a className="btn btn-primary" href={(() => { try { const u = new URL(sent.devLink); return u.pathname + u.search; } catch { return sent.devLink; } })()}>
                     {t("login.devLink")}
                   </a>
                 </>

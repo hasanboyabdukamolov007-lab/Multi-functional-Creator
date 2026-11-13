@@ -58,6 +58,7 @@ interface BuilderState {
   saveNow: () => Promise<void>;
 }
 
+let opening: { id: string; promise: Promise<void> } | null = null;
 const autosave = createAutosave(900);
 const HISTORY = 100;
 
@@ -111,21 +112,31 @@ export const useBuilder = create<BuilderState>((set, get) => {
       return id ? findNode(get().page().root, id)?.node ?? null : null;
     },
 
-    open: async (projectId) => {
-      await autosave.flush();
-      set({ loading: true });
-      try {
-        const p = await projectsApi.get<BuilderDoc>(projectId);
-        let doc = p.data as BuilderDoc;
-        if (!validDoc(doc)) {
-          doc = newDoc();
-          await projectsApi.save(projectId, { data: doc });
+    open: (projectId) => {
+      // Concurrent opens of the same project (e.g. a template action and the page mounting)
+      // share one load, so a second load can't overwrite edits made after the first.
+      if (opening?.id === projectId) return opening.promise;
+      const load = async () => {
+        await autosave.flush();
+        set({ loading: true });
+        try {
+          const p = await projectsApi.get<BuilderDoc>(projectId);
+          let doc = p.data as BuilderDoc;
+          if (!validDoc(doc)) {
+            doc = newDoc();
+            await projectsApi.save(projectId, { data: doc });
+          }
+          set({ projectId, projectName: p.name, projectKind: p.kind, doc, pageId: doc.pages[0].id, selectedId: null, past: [], future: [], saveState: "saved", loading: false });
+        } catch (e) {
+          set({ loading: false });
+          throw e;
         }
-        set({ projectId, projectName: p.name, projectKind: p.kind, doc, pageId: doc.pages[0].id, selectedId: null, past: [], future: [], saveState: "saved", loading: false });
-      } catch (e) {
-        set({ loading: false });
-        throw e;
-      }
+      };
+      const promise = load().finally(() => {
+        if (opening?.promise === promise) opening = null;
+      });
+      opening = { id: projectId, promise };
+      return promise;
     },
     close: () => {
       void autosave.flush();

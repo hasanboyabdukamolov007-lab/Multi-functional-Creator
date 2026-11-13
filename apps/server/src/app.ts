@@ -41,7 +41,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   });
   const log = (m: string) => app.log.info(m);
 
-  const db = injected.db ?? (await openDb({ databaseUrl: config.databaseUrl, dataDir: config.dataDir, inMemory: config.inMemoryDb }));
+  const db = injected.db ?? (await openDb({ databaseUrl: config.databaseUrl, dataDir: config.dataDir, inMemory: config.inMemoryDb, serverless: config.serverless }));
   const ring = injected.ring ?? loadKeyRing({ masterKey: config.vaultMasterKey, oldKeys: config.vaultOldKeys, dataDir: config.dataDir, env: config.env, log });
   const mailer = injected.mailer ?? (await createMailer(config, log));
   app.decorate("deps", { config, db, ring, mailer });

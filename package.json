@@ -2,7 +2,7 @@
   "name": "multi-functional-creator",
   "private": true,
   "version": "0.1.0",
-  "description": "Professional control panel for building panels, sites, apps, APIs and 3D scenes \u2014 with a secrets vault and an expert AI copilot.",
+  "description": "Professional control panel for building panels, sites, apps, APIs and 3D scenes — with a secrets vault and an expert AI copilot.",
   "scripts": {
     "dev": "pnpm --filter @mfc/core build && concurrently -n server,web -c blue,magenta \"pnpm --filter @mfc/server dev\" \"pnpm --filter @mfc/web dev\"",
     "build": "pnpm --filter @mfc/core build && pnpm --filter @mfc/server build && pnpm --filter @mfc/web build",
@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "esbuild": "^0.25.12",
     "typescript": "~5.9.3"
   },
   "engines": {

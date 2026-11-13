@@ -22,19 +22,25 @@ export interface Config {
   webDist?: string;
   cookieSecure: boolean;
   anthropicApiKey?: string;
+  /** Running as a serverless function (Vercel): no local disk, so an external database is required. */
+  serverless?: boolean;
 }
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
   const env = (process.env.NODE_ENV === "production" ? "production" : process.env.NODE_ENV === "test" ? "test" : "development") as Config["env"];
   const root = path.resolve(process.cwd());
+  const onVercel = !!process.env.VERCEL;
+  // On Vercel the production domain is known, so magic links work without setting PUBLIC_URL.
+  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
   const base: Config = {
     env,
     host: process.env.HOST ?? "0.0.0.0",
     port: Number(process.env.PORT ?? 8787),
-    publicUrl: (process.env.PUBLIC_URL ?? (env === "production" ? "http://localhost:8787" : "http://localhost:5173")).replace(/\/$/, ""),
+    publicUrl: (process.env.PUBLIC_URL ?? (vercelUrl ? `https://${vercelUrl}` : env === "production" ? "http://localhost:8787" : "http://localhost:5173")).replace(/\/$/, ""),
     corsOrigins: (process.env.CORS_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-    databaseUrl: process.env.DATABASE_URL || undefined,
-    dataDir: path.resolve(root, process.env.DATA_DIR ?? "data"),
+    databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || undefined,
+    dataDir: onVercel ? "/tmp/mfc-data" : path.resolve(root, process.env.DATA_DIR ?? "data"),
+    serverless: onVercel,
     vaultMasterKey: process.env.VAULT_MASTER_KEY || undefined,
     vaultOldKeys: process.env.VAULT_OLD_KEYS || undefined,
     smtpUrl: process.env.SMTP_URL || undefined,
@@ -44,5 +50,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     cookieSecure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "1" : env === "production",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
   };
-  return { ...base, ...overrides };
+  const cfg = { ...base, ...overrides };
+  if (cfg.serverless && !cfg.databaseUrl) throw new Error("DATABASE_URL is required on Vercel (connect a Postgres database, e.g. Neon from the Vercel Storage tab)");
+  return cfg;
 }

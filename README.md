@@ -51,6 +51,25 @@ The API serves the built web app on one origin (default port 8787). Keep `VAULT_
 store — losing it makes vault values unrecoverable. Set `DATABASE_URL` to use an external PostgreSQL. All options are
 documented in [`apps/server/.env.example`](apps/server/.env.example).
 
+## Deploy on Vercel
+
+The repo is Vercel-ready (`vercel.json` + `scripts/vercel-build.mjs`): the web app is served from Vercel's CDN and the
+API runs as one streaming Node function.
+
+1. **Import** the GitHub repo at vercel.com → *Add New… → Project* (leave all build settings as they are).
+2. **Database:** in the project's *Storage* tab, create a **Neon Postgres** database and connect it — this sets
+   `DATABASE_URL` automatically. (Any Postgres works: Supabase, Neon, RDS… — set `DATABASE_URL` yourself.)
+3. **Environment variables** (*Settings → Environment Variables*):
+   - `VAULT_MASTER_KEY` — 32 random bytes, base64 (`openssl rand -base64 32`). Back it up: without it vault values
+     can't be decrypted.
+   - `SMTP_URL` — for sign-in emails, e.g. Gmail with an app password:
+     `smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465`
+   - `MAIL_FROM` — e.g. `Multi-functional Creator <you@gmail.com>`
+4. **Redeploy**, open your `*.vercel.app` URL and sign in. Add `ANTHROPIC_API_KEY` in the Secrets Vault to enable Forge.
+
+Limits on Vercel: request bodies are capped at 4.5 MB (so large imported 3D models can't be saved until the asset
+manager ships), and a single copilot turn can run up to 300 s.
+
 ## Architecture
 
 ```
