@@ -218,6 +218,8 @@ async function execute(a: Action, lang: Lang, steps: StepResult[], notes: string
       B().mutate((doc, page) => {
         Object.assign(doc.tokens, g.tokens);
         page.title = g.title;
+        page.description = g.description;
+        page.lang = a.spec.lang;
         page.root.children = g.nodes;
       });
       memory.recentNodes = g.nodes.map((x) => x.id);

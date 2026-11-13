@@ -78,7 +78,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         await t.query(`INSERT INTO ai_settings (workspace_id) VALUES ($1)`, [wsId]);
       }
       const session = randomToken(32);
-      await t.query(`INSERT INTO sessions (token_hash, user_id, expires_at, user_agent) VALUES ($1, $2, now() + ($3 || ' days')::interval, $4)`, [
+      await t.query(`INSERT INTO sessions (token_hash, id, user_id, expires_at, user_agent) VALUES ($1, substr($1, 1, 16), $2, now() + ($3 || ' days')::interval, $4)`, [
         sha256(session),
         user.id,
         String(SESSION_TTL_DAYS),
@@ -103,6 +103,34 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     if (token) await db.query(`DELETE FROM sessions WHERE token_hash = $1`, [sha256(token)]);
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     return { ok: true };
+  });
+
+  /** Active sessions of the signed-in user (devices), so they can sign out other devices. */
+  app.get("/sessions", async (req) => {
+    const user = requireUser(req);
+    const current = sha256(req.cookies?.[SESSION_COOKIE] ?? "").slice(0, 16);
+    const sessions = await db.query<{ id: string; user_agent: string | null; created_at: string; last_seen_at: string; expires_at: string }>(
+      `SELECT id, user_agent, created_at, last_seen_at, expires_at FROM sessions WHERE user_id = $1 AND expires_at > now() ORDER BY last_seen_at DESC`,
+      [user.id],
+    );
+    return { sessions: sessions.map((s) => ({ ...s, current: s.id === current })) };
+  });
+
+  app.delete("/sessions/:id", async (req) => {
+    const user = requireUser(req);
+    const { id } = req.params as { id: string };
+    const row = await db.one(`DELETE FROM sessions WHERE id = $1 AND user_id = $2 RETURNING id`, [id, user.id]);
+    if (!row) throw new HttpError(404, "Session not found", "not_found");
+    await audit(db, req, "auth.session.revoke", { meta: { session: id } });
+    return { ok: true };
+  });
+
+  app.post("/sessions/revoke-others", async (req) => {
+    const user = requireUser(req);
+    const current = sha256(req.cookies?.[SESSION_COOKIE] ?? "");
+    const rows = await db.query(`DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2 RETURNING id`, [user.id, current]);
+    await audit(db, req, "auth.session.revoke_others", { meta: { count: rows.length } });
+    return { ok: true, revoked: rows.length };
   });
 
   app.get("/me", async (req) => {

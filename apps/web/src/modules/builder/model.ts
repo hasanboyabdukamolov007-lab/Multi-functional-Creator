@@ -29,6 +29,10 @@ export interface BPage {
   name: string;
   path: string;
   title: string;
+  /** SEO and social sharing. */
+  description?: string;
+  ogImage?: string;
+  lang?: string;
   root: BNode;
 }
 

@@ -3,6 +3,12 @@ import { useMemo, useState } from "react";
 import { getCtx, prettyShortcut, registry, runFunction, useRegistryVersion } from "../lib/registry";
 import { useUi, toast } from "../lib/ui";
 import { t as tt, useT } from "../lib/i18n";
+import { load, save } from "../lib/storage";
+
+const RECENT_KEY = "mfc.palette.recent";
+function remember(id: string) {
+  save(RECENT_KEY, [id, ...load<string[]>(RECENT_KEY, []).filter((x) => x !== id)].slice(0, 8));
+}
 import { IconCommand } from "../ui/icons";
 
 export function functionTitle(f: { title: string; titleKey?: string; titleArgs?: Record<string, string> }) {
@@ -21,9 +27,13 @@ export function CommandPalette() {
   const results = useMemo(() => (open ? registry.search(query, 80) : []), [open, query]);
   const groups = useMemo(() => {
     const m = new Map<string, typeof results>();
-    for (const f of results) m.set(f.category, [...(m.get(f.category) ?? []), f]);
+    if (!query.trim()) {
+      const recent = load<string[]>(RECENT_KEY, []).map((id) => registry.get(id)).filter((f): f is NonNullable<typeof f> => !!f);
+      if (recent.length) m.set(tt("shell.recent"), recent);
+    }
+    for (const f of results) if (!m.get(tt("shell.recent"))?.includes(f)) m.set(f.category, [...(m.get(f.category) ?? []), f]);
     return [...m.entries()];
-  }, [results]);
+  }, [results, query]);
 
   if (!open) return null;
   const ctx = getCtx();
@@ -48,6 +58,7 @@ export function CommandPalette() {
                     value={f.id}
                     disabled={enabled !== true}
                     onSelect={() => {
+                      remember(f.id);
                       close();
                       runFunction(f.id).catch((e: Error) => toast(e.message, "error"));
                     }}

@@ -316,11 +316,56 @@ function AiSettings() {
   );
 }
 
+interface SessionRow {
+  id: string;
+  user_agent: string | null;
+  created_at: string;
+  last_seen_at: string;
+  current: boolean;
+}
+
+function describeAgent(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  return os ? `${browser} on ${os}` : browser;
+}
+
+function Sessions() {
+  const t = useT();
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const load = () => api.get<{ sessions: SessionRow[] }>("/api/auth/sessions").then((r) => setSessions(r.sessions)).catch(() => setSessions([]));
+  useEffect(() => {
+    void load();
+  }, []);
+  return (
+    <div className="card col" style={{ gap: 10, maxWidth: 640 }}>
+      <div className="row">
+        <div className="card-title grow" style={{ margin: 0 }}>{t("settings.sessions")}</div>
+        {sessions.length > 1 && (
+          <button className="btn btn-sm btn-danger" onClick={async () => { const r = await api.post<{ revoked: number }>("/api/auth/sessions/revoke-others"); toast(t("settings.revoked", { n: r.revoked }), "success"); void load(); }}>
+            {t("settings.signOutOthers")}
+          </button>
+        )}
+      </div>
+      {sessions.map((s) => (
+        <div key={s.id} className="row small">
+          <I.IconDesktop size={15} className="muted" />
+          <span className="grow">{describeAgent(s.user_agent)} {s.current && <span className="badge badge-success">{t("settings.thisDevice")}</span>}</span>
+          <span className="muted">{new Date(s.last_seen_at).toLocaleString()}</span>
+          {!s.current && <button className="icon-btn" title={t("shell.signOut")} onClick={async () => { await api.del(`/api/auth/sessions/${s.id}`); void load(); }}><I.IconLogout size={14} /></button>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Account() {
   const t = useT();
   const { user, refresh } = useSession();
   const [name, setName] = useState(user?.name ?? "");
   return (
+    <div className="col" style={{ gap: 20 }}>
     <form className="card col" style={{ gap: 12, maxWidth: 480 }} onSubmit={async (e) => { e.preventDefault(); await api.patch("/api/auth/me", { name }); await refresh(); toast(t("common.saved"), "success"); }}>
       <div className="field"><label>Email</label><input className="input" value={user?.email ?? ""} disabled /></div>
       <div className="field"><label>{t("common.name")}</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
@@ -329,6 +374,8 @@ function Account() {
         <button type="button" className="btn btn-ghost" onClick={() => runFunction("ui.onboarding")}>Replay welcome tour</button>
       </div>
     </form>
+    <Sessions />
+    </div>
   );
 }
 

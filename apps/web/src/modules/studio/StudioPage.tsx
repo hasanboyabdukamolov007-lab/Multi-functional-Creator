@@ -20,7 +20,7 @@ const run = (id: string) => runFunction(id).catch((e: Error) => toast(e.message,
 function Toolbar() {
   const t = useT();
   const s = useStudio();
-  const saveLabel = s.saveState === "saving" ? t("common.saving") : s.saveState === "saved" ? t("common.saved") : s.saveState === "error" ? t("common.error") : s.saveState === "dirty" ? "•" : "";
+  const saveLabel = s.saveState === "saving" ? t("common.saving") : s.saveState === "saved" ? t("common.saved") : s.saveState === "error" ? t("common.error") : s.saveState === "conflict" ? "⚠ Conflict — reload" : s.saveState === "dirty" ? "•" : "";
   return (
     <div className="toolbar">
       <strong className="ellipsis" style={{ maxWidth: 200, padding: "0 6px" }}>{s.projectName}</strong>

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createAutosave, projectsApi } from "../../lib/projects";
 import { toast } from "../../lib/ui";
+import { ApiError } from "../../lib/api";
 import { uid } from "../../lib/download";
 import { upsertKeyframe } from "./animation";
 import { isSceneDoc, newScene, type Asset, type Easing, type SceneDoc, type SceneObject, type SceneSettings, type Track, type TrackProp, type Vec3 } from "./model";
@@ -19,7 +20,9 @@ interface StudioState {
   projectId: string | null;
   projectName: string;
   loading: boolean;
-  saveState: "idle" | "dirty" | "saving" | "saved" | "error";
+  saveState: "idle" | "dirty" | "saving" | "saved" | "error" | "conflict";
+  /** Server version of the project last loaded/saved (optimistic concurrency). */
+  version: number;
   doc: SceneCore;
   /** Imported model files, kept out of undo history (they can be large). */
   assets: Record<string, Asset>;
@@ -76,18 +79,23 @@ const propValue = (o: SceneObject, p: TrackProp): number[] => (p === "opacity" ?
 
 export const useStudio = create<StudioState>((set, get) => {
   const persist = () => {
-    if (!get().projectId) return;
+    if (!get().projectId || get().saveState === "conflict") return;
     set({ saveState: "dirty" });
     autosave.schedule(async () => {
       const { projectId, doc, assets } = get();
       if (!projectId) return;
       set({ saveState: "saving" });
       try {
-        await projectsApi.save(projectId, { data: { ...doc, assets } });
-        set({ saveState: "saved" });
+        const r = await projectsApi.save(projectId, { data: { ...doc, assets }, baseVersion: get().version || undefined });
+        set({ saveState: "saved", version: r.version });
       } catch (e) {
-        set({ saveState: "error" });
-        toast(`Save failed: ${(e as Error).message}`, "error");
+        if (e instanceof ApiError && e.status === 409) {
+          set({ saveState: "conflict" });
+          toast(e.message, "error");
+        } else {
+          set({ saveState: "error" });
+          toast(`Save failed: ${(e as Error).message}`, "error");
+        }
       }
     });
   };
@@ -100,6 +108,7 @@ export const useStudio = create<StudioState>((set, get) => {
     projectName: "",
     loading: false,
     saveState: "idle",
+    version: 0,
     doc: empty,
     assets: {},
     selectedId: null,
@@ -130,10 +139,10 @@ export const useStudio = create<StudioState>((set, get) => {
           let doc = p.data as SceneDoc;
           if (!isSceneDoc(doc)) {
             doc = newScene();
-            await projectsApi.save(projectId, { data: doc });
+            p.version = (await projectsApi.save(projectId, { data: doc, baseVersion: p.version })).version;
           }
           const { assets = {}, ...core } = doc;
-          set({ projectId, projectName: p.name, doc: core, assets, selectedId: null, past: [], future: [], time: 0, playing: false, saveState: "saved", loading: false });
+          set({ projectId, projectName: p.name, doc: core, assets, selectedId: null, past: [], future: [], time: 0, playing: false, saveState: "saved", version: p.version, loading: false });
         } catch (e) {
           set({ loading: false });
           throw e;

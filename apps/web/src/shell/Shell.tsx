@@ -10,6 +10,8 @@ import { api } from "../lib/api";
 import { CommandPalette } from "./CommandPalette";
 import { Toasts } from "./Toasts";
 import { Onboarding } from "./Onboarding";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { ShortcutsHelp } from "./ShortcutsHelp";
 import * as I from "../ui/icons";
 
 const CopilotPanel = lazy(() => import("../modules/copilot/CopilotPanel"));
@@ -57,6 +59,10 @@ export function Shell() {
 
   useEffect(() => setNavigate((p) => navigate(p)), [navigate]);
   useEffect(() => setModule(moduleForPath(location.pathname).id), [location.pathname, setModule]);
+  // On phones the sidebar overlays content: start collapsed and close it after navigating.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 900px)").matches && !useUi.getState().sidebarCollapsed) useUi.getState().toggleSidebar();
+  }, [location.pathname]);
   useShortcuts();
 
   const newWorkspace = async () => {
@@ -149,21 +155,26 @@ export function Shell() {
       </nav>
 
       <main className="main">
-        <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}>
-          <Outlet />
-        </Suspense>
+        <ErrorBoundary resetKey={location.pathname}>
+          <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       {copilotOpen && (
         <aside className="copilot-dock" aria-label="Copilot">
-          <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}>
-            <CopilotPanel />
-          </Suspense>
+          <ErrorBoundary compact>
+            <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}>
+              <CopilotPanel />
+            </Suspense>
+          </ErrorBoundary>
         </aside>
       )}
 
       <CommandPalette />
       <Onboarding />
+      <ShortcutsHelp />
       <Toasts />
     </div>
   );

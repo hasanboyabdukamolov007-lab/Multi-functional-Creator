@@ -9,6 +9,17 @@ import { ApiError } from "../../lib/api";
 import { vaultApi, useVaultUi, type SecretMeta } from "./vaultApi";
 import * as I from "../../ui/icons";
 
+/** Cryptographically random value for passwords, JWT/session secrets and API tokens. */
+export function generateSecret(length = 48): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789-_";
+  const limit = 256 - (256 % alphabet.length); // reject biased bytes
+  let out = "";
+  while (out.length < length) {
+    for (const b of crypto.getRandomValues(new Uint8Array(length * 2))) if (b < limit && out.length < length) out += alphabet[b % alphabet.length];
+  }
+  return out;
+}
+
 const STATUS_CLASS: Record<SecretMeta["status"], string> = { ok: "badge-success", expiring: "badge-warning", expired: "badge-danger", rotation_due: "badge-warning" };
 const ENV_CLASS: Record<Environment, string> = { development: "", staging: "badge-accent", production: "badge-danger" };
 
@@ -101,6 +112,9 @@ function NewSecretModal({ projects, onClose }: { projects: ProjectSummary[]; onC
             )}
             <button type="button" className="icon-btn" onClick={() => setShow(!show)} aria-label={show ? t("vault.hide") : t("vault.reveal")}>
               {show ? <I.IconEyeOff size={16} /> : <I.IconEye size={16} />}
+            </button>
+            <button type="button" className="icon-btn" title={t("vault.generate")} aria-label={t("vault.generate")} onClick={() => (setValue(generateSecret()), setShow(true))}>
+              <I.IconWand size={16} />
             </button>
           </div>
         </div>
@@ -328,6 +342,7 @@ function SecretRow({ s, projects, canReveal, canWrite }: { s: SecretMeta; projec
             {panel === "rotate" && (
               <form className="row" onSubmit={async (e) => { e.preventDefault(); try { await vaultApi.rotate(s.id, newValue); setNewValue(""); setPanel(null); setValue(null); toast(`${s.name} rotated`, "success"); refresh(); } catch (err) { toast((err as Error).message, "error"); } }}>
                 <input className="input mono grow" type="password" autoComplete="new-password" required placeholder={`New value for ${s.name}`} value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+                <button type="button" className="btn" title={t("vault.generate")} onClick={() => setNewValue(generateSecret())}><I.IconWand size={14} /> {t("vault.generate")}</button>
                 <button className="btn btn-primary">{t("vault.rotate")}</button>
               </form>
             )}

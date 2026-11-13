@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useBuilder, type Device } from "./store";
+import { previewInNewTab, useBuilder, useBuilderUi, type Device } from "./store";
+import { A11yPanel, PageSettings } from "./A11yPanel";
 import { CATALOG, CATEGORIES, CATALOG_MAP, defFor } from "./catalog";
 import { Canvas, DRAG_MIME, MOVE_MIME } from "./Canvas";
 import { Inspector } from "./Inspector";
@@ -158,6 +159,9 @@ function PagesAndTokens() {
         <div key={p.id} className={`list-item ${p.id === pageId ? "selected" : ""}`} onClick={() => st.setPage(p.id)}>
           <span className="grow ellipsis">{p.name}</span>
           <span className="small muted">{p.path}</span>
+          <button className="icon-btn" style={{ width: 22, height: 22 }} title={t("builder.pageSettings")} aria-label={t("builder.pageSettings")} onClick={(e) => (e.stopPropagation(), useBuilderUi.getState().set({ pageSettingsId: p.id }))}>
+            <I.IconSettings size={13} />
+          </button>
           {doc.pages.length > 1 && (
             <button className="icon-btn" style={{ width: 22, height: 22 }} title="Delete page" onClick={(e) => (e.stopPropagation(), window.confirm(t("common.confirm")) && st.removePage(p.id))}>
               <I.IconTrash size={13} />
@@ -193,7 +197,7 @@ function Toolbar() {
     ["tablet", I.IconTablet],
     ["mobile", I.IconPhone],
   ];
-  const saveLabel = s.saveState === "saving" ? t("common.saving") : s.saveState === "saved" ? t("common.saved") : s.saveState === "error" ? t("common.error") : s.saveState === "dirty" ? "•" : "";
+  const saveLabel = s.saveState === "saving" ? t("common.saving") : s.saveState === "saved" ? t("common.saved") : s.saveState === "error" ? t("common.error") : s.saveState === "conflict" ? "⚠ Conflict — reload" : s.saveState === "dirty" ? "•" : "";
   return (
     <div className="toolbar">
       <strong className="ellipsis" style={{ maxWidth: 220, padding: "0 6px" }}>{s.projectName}</strong>
@@ -221,6 +225,12 @@ function Toolbar() {
           </option>
         ))}
       </select>
+      <button className="btn btn-sm" onClick={() => useBuilderUi.getState().set({ a11yOpen: true })} title={t("builder.a11yTitle")}>
+        <I.IconShield size={14} /> {t("builder.check")}
+      </button>
+      <button className="btn btn-sm" onClick={() => previewInNewTab().catch((e: Error) => toast(e.message, "error"))} title={t("builder.preview")}>
+        <I.IconExternal size={14} /> {t("builder.preview")}
+      </button>
       <button className={`btn btn-sm ${s.codeOpen ? "btn-primary" : ""}`} onClick={() => s.setCodeOpen(!s.codeOpen)}>
         <I.IconCode size={14} /> {t("builder.code")}
       </button>
@@ -353,6 +363,8 @@ export default function BuilderPage() {
           </div>
         </Panel>
       </PanelGroup>
+      <A11yPanel />
+      <PageSettings />
     </div>
   );
 }

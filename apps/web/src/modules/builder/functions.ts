@@ -2,7 +2,8 @@ import { registry, type AppFunction } from "../../lib/registry";
 import { downloadText, pickFile, slugify } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { scanForLeaks } from "@mfc/core";
-import { useBuilder } from "./store";
+import { previewInNewTab, useBuilder, useBuilderUi } from "./store";
+import { auditPage, contrastRatio } from "./a11y";
 import { CATALOG, CATALOG_MAP, defFor } from "./catalog";
 import { TEMPLATES } from "./templates";
 import { pageHtml, pageReact, siteCss } from "./exporters";
@@ -269,6 +270,39 @@ export function registerBuilderExtraFunctions() {
       },
     });
   }
+  fns.push(
+    { id: "builder.preview", title: "Preview page in a new tab", category: "Builder · View", keywords: ["open", "live", "browser"], ai: false, when: hasProject, run: () => previewInNewTab() },
+    {
+      id: "builder.a11y-check",
+      title: "Check accessibility & SEO",
+      category: "Builder · Quality",
+      keywords: ["accessibility", "a11y", "wcag", "contrast", "seo", "audit", "check"],
+      when: hasProject,
+      run: () => {
+        useBuilderUi.getState().set({ a11yOpen: true });
+        const r = auditPage(B().page(), B().doc.tokens);
+        return { score: r.score, issues: r.issues.map((i) => `${i.severity}: ${i.message}`) };
+      },
+    },
+    { id: "builder.page.settings", title: "Page settings & SEO", category: "Builder · Pages", keywords: ["seo", "meta", "title", "description", "og"], when: hasProject, run: () => useBuilderUi.getState().set({ pageSettingsId: B().page().id }) },
+    {
+      id: "builder.fix-contrast",
+      title: "Fix color contrast automatically",
+      category: "Builder · Quality",
+      keywords: ["accessibility", "contrast", "wcag"],
+      when: hasProject,
+      run: () => {
+        const tk = B().doc.tokens;
+        const dark = (contrastRatio(tk.bg, "#000000") ?? 21) < (contrastRatio(tk.bg, "#ffffff") ?? 1);
+        const patch: Partial<SiteTokens> = {};
+        if ((contrastRatio(tk.text, tk.bg) ?? 21) < 4.5) patch.text = dark ? "#f2f4f8" : "#14161f";
+        if ((contrastRatio(tk.muted, tk.bg) ?? 21) < 4.5) patch.muted = dark ? "#a7aec0" : "#555c6e";
+        if ((contrastRatio(tk.primaryText, tk.primary) ?? 21) < 4.5) patch.primaryText = (contrastRatio("#ffffff", tk.primary) ?? 0) >= (contrastRatio("#111318", tk.primary) ?? 0) ? "#ffffff" : "#111318";
+        B().setTokens(patch);
+        return { fixed: Object.keys(patch) };
+      },
+    },
+  );
   fns.push({ id: "builder.select-root", title: "Select page root", category: "Builder · Edit", when: hasProject, run: () => B().select(B().page().root.id) });
   registry.register(fns);
 }

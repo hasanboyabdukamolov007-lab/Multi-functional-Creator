@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Environment, GizmoHelper, GizmoViewport, Grid, Lightformer, OrbitControls, Stats, TransformControls } from "@react-three/drei";
+import { Environment, GizmoHelper, GizmoViewport, Grid, Lightformer, OrbitControls, Outlines, Stats, TransformControls } from "@react-three/drei";
 import { useShallow } from "zustand/react/shallow";
 import { useStudio } from "./store";
 import { buildGeometry } from "./geometry";
@@ -66,6 +66,7 @@ function ModelInstance({ assetId }: { assetId: string }) {
 function SceneNode({ obj }: { obj: SceneObject }) {
   const childIds = useStudio(useShallow((s) => s.doc.objects.filter((o) => o.parentId === obj.id).map((o) => o.id)));
   const select = useStudio((s) => s.select);
+  const selected = useStudio((s) => s.selectedId === obj.id);
   const ref = useRef<THREE.Object3D>(null);
   useRegister(obj.id, ref);
   const onClick = (e: ThreeEvent<MouseEvent>) => {
@@ -91,6 +92,7 @@ function SceneNode({ obj }: { obj: SceneObject }) {
       <mesh ref={ref as React.RefObject<THREE.Mesh>} {...common} castShadow={obj.castShadow} receiveShadow={obj.receiveShadow} onClick={onClick}>
         <Geometry spec={obj.geometry} />
         <Material m={obj.material} doubleSided={flat} />
+        {selected && !flat && <Outlines thickness={0.035} color="#8b7cff" screenspace={false} userData={{ editorOnly: true }} />}
         {children}
       </mesh>
     );

@@ -181,3 +181,7 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
 .prop-grid > *, .vec3 > * { min-width: 0; }
 .prop-grid input[type="range"] { min-width: 0; width: 100%; }
 .vec3 .input { padding: 0 4px; }
+.project-card { cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.project-card:hover { border-color: color-mix(in srgb, var(--mfc-accent) 45%, var(--mfc-border)); }
+.project-actions { justify-content: flex-end; gap: 2px; opacity: .55; transition: opacity .12s; }
+.project-card:hover .project-actions, .project-card:focus-within .project-actions { opacity: 1; }

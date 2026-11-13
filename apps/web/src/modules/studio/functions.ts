@@ -210,7 +210,12 @@ export function registerStudioFunctions() {
   for (const e of EASINGS) fns.push({ id: `studio.anim.ease-${e}`, title: `Easing: ${e} (key at playhead)`, category: "3D · Animation", when: hasSel, run: () => (S().setDefaultEasing(e), S().setEasingAt(S().selectedId!, S().time, e)) });
 
   // File / export
-  for (const f of ["glb", "gltf", "obj", "stl"] as const) fns.push({ id: `studio.export.${f}`, title: `Export scene as ${f.toUpperCase()}`, category: "3D · File", ai: false, when: studioKey(hasScene), run: () => exportScene(f, S().projectName) });
+  for (const f of ["glb", "gltf", "obj", "stl"] as const) fns.push({ id: `studio.export.${f}`, title: `Export scene as ${f.toUpperCase()}`, category: "3D · File", ai: false, when: studioKey(hasScene), run: async () => {
+    // The selection outline is a real mesh: deselect and let the viewport re-render so it isn't exported.
+    S().select(null);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await exportScene(f, S().projectName);
+  } });
   fns.push(
     { id: "studio.export.png", title: "Export PNG snapshot", category: "3D · File", ai: false, when: studioKey(hasScene), run: () => snapshotPng(S().projectName) },
     { id: "studio.export.json", title: "Export scene JSON", category: "3D · File", ai: false, when: hasScene, run: () => downloadText(`${slugify(S().projectName)}.scene.json`, JSON.stringify({ ...S().doc, assets: S().assets }, null, 2), "application/json") },

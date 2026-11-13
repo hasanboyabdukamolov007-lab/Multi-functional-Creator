@@ -8,6 +8,7 @@ export interface ProjectSummary {
   id: string;
   name: string;
   kind: ProjectKind;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -19,7 +20,9 @@ export const projectsApi = {
   list: (kind?: ProjectKind) => api.get<{ projects: ProjectSummary[] }>(ws(`/projects${kind ? `?kind=${kind}` : ""}`)).then((r) => r.projects),
   get: <D>(id: string) => api.get<{ project: Project<D> }>(ws(`/projects/${id}`)).then((r) => r.project),
   create: <D>(name: string, kind: ProjectKind, data?: D) => api.post<{ project: Project<D> }>(ws("/projects"), { name, kind, data }).then((r) => r.project),
-  save: (id: string, patch: { name?: string; data?: unknown }) => api.put(ws(`/projects/${id}`), patch),
+  save: (id: string, patch: { name?: string; data?: unknown; baseVersion?: number }) => api.put<{ project: { version: number } }>(ws(`/projects/${id}`), patch).then((r) => r.project),
+  rename: (id: string, name: string) => api.put<{ project: { version: number } }>(ws(`/projects/${id}`), { name }).then((r) => r.project),
+  duplicate: (id: string, name?: string) => api.post<{ project: ProjectSummary }>(ws(`/projects/${id}/duplicate`), name ? { name } : {}).then((r) => r.project),
   remove: (id: string) => api.del(ws(`/projects/${id}`)),
 };
 

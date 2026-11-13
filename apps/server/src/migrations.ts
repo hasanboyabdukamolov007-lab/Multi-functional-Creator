@@ -114,4 +114,12 @@ CREATE TABLE ai_providers (
     name: "ai-addons-opt-in",
     sql: `ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS claude_enabled boolean NOT NULL DEFAULT false`,
   },
+  {
+    id: 3,
+    name: "project-versions-and-session-ids",
+    sql: `ALTER TABLE projects ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS id text;
+UPDATE sessions SET id = substr(token_hash, 1, 16) WHERE id IS NULL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at timestamptz NOT NULL DEFAULT now()`,
+  },
 ];

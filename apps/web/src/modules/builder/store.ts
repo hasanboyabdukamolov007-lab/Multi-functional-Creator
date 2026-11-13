@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createAutosave, projectsApi } from "../../lib/projects";
 import { toast } from "../../lib/ui";
+import { ApiError } from "../../lib/api";
 import { uid } from "../../lib/download";
 import { CATALOG_MAP, defFor, isKnownType } from "./catalog";
 import { cloneWithNewIds, dedupeIds, findNode, n, newDoc, newPage, normalizeNode, type BNode, type BPage, type BuilderDoc, type SiteTokens } from "./model";
@@ -13,7 +14,9 @@ interface BuilderState {
   projectName: string;
   projectKind: string;
   loading: boolean;
-  saveState: "idle" | "dirty" | "saving" | "saved" | "error";
+  saveState: "idle" | "dirty" | "saving" | "saved" | "error" | "conflict";
+  /** Server version of the project last loaded/saved (optimistic concurrency). */
+  version: number;
   doc: BuilderDoc;
   pageId: string;
   selectedId: string | null;
@@ -44,6 +47,7 @@ interface BuilderState {
   setPage: (id: string) => void;
   addPage: (name?: string) => BPage;
   removePage: (id: string) => void;
+  updatePage: (id: string, patch: Partial<Pick<BPage, "name" | "path" | "title" | "description" | "ogImage" | "lang">>) => void;
   replacePageRoot: (root: unknown) => void;
   replaceDoc: (doc: BuilderDoc) => void;
   undo: () => void;
@@ -70,18 +74,23 @@ function validDoc(d: unknown): d is BuilderDoc {
 export const useBuilder = create<BuilderState>((set, get) => {
   const persist = () => {
     const { projectId } = get();
-    if (!projectId) return;
+    if (!projectId || get().saveState === "conflict") return;
     set({ saveState: "dirty" });
     autosave.schedule(async () => {
       const { doc, projectId: pid } = get();
       if (!pid) return;
       set({ saveState: "saving" });
       try {
-        await projectsApi.save(pid, { data: doc });
-        set({ saveState: "saved" });
+        const r = await projectsApi.save(pid, { data: doc, baseVersion: get().version || undefined });
+        set({ saveState: "saved", version: r.version });
       } catch (e) {
-        set({ saveState: "error" });
-        toast(`Save failed: ${(e as Error).message}`, "error");
+        if (e instanceof ApiError && e.status === 409) {
+          set({ saveState: "conflict" });
+          toast(e.message, "error");
+        } else {
+          set({ saveState: "error" });
+          toast(`Save failed: ${(e as Error).message}`, "error");
+        }
       }
     });
   };
@@ -94,6 +103,7 @@ export const useBuilder = create<BuilderState>((set, get) => {
     projectKind: "site",
     loading: false,
     saveState: "idle",
+    version: 0,
     doc: newDoc(),
     pageId: "",
     selectedId: null,
@@ -124,9 +134,9 @@ export const useBuilder = create<BuilderState>((set, get) => {
           let doc = p.data as BuilderDoc;
           if (!validDoc(doc)) {
             doc = newDoc();
-            await projectsApi.save(projectId, { data: doc });
+            p.version = (await projectsApi.save(projectId, { data: doc, baseVersion: p.version })).version;
           }
-          set({ projectId, projectName: p.name, projectKind: p.kind, doc, pageId: doc.pages[0].id, selectedId: null, past: [], future: [], saveState: "saved", loading: false });
+          set({ projectId, projectName: p.name, projectKind: p.kind, doc, pageId: doc.pages[0].id, selectedId: null, past: [], future: [], saveState: "saved", version: p.version, loading: false });
         } catch (e) {
           set({ loading: false });
           throw e;
@@ -290,6 +300,14 @@ export const useBuilder = create<BuilderState>((set, get) => {
       if (get().pageId === id) set({ pageId: get().doc.pages[0].id, selectedId: null });
     },
 
+    updatePage: (id, patch) =>
+      get().mutate((doc) => {
+        const pg = doc.pages.find((p) => p.id === id);
+        if (!pg) throw new Error("Page not found");
+        Object.assign(pg, patch);
+        if (patch.path !== undefined) pg.path = `/${patch.path.replace(/^\/+/, "").replace(/[^a-zA-Z0-9/_-]+/g, "-")}`.replace(/\/+$/, "") || "/";
+      }, `page:${id}:${Object.keys(patch).join(",")}`),
+
     replacePageRoot: (rootInput) => {
       const root = normalizeNode(rootInput, isKnownType, "root");
       if (root.type !== "page") throw new Error('The root node must have type "page"');
@@ -351,3 +369,21 @@ export const useBuilder = create<BuilderState>((set, get) => {
 
 export const knownTypes = () => [...CATALOG_MAP.keys()];
 export { uid };
+
+/** Builder UI flags shared between the toolbar, panels and functions. */
+export const useBuilderUi = create<{ a11yOpen: boolean; pageSettingsId: string | null; set: (p: Partial<{ a11yOpen: boolean; pageSettingsId: string | null }>) => void }>((set) => ({
+  a11yOpen: false,
+  pageSettingsId: null,
+  set: (p) => set(p),
+}));
+
+/** Open the current page's exported HTML in a new browser tab. */
+export async function previewInNewTab() {
+  const { pageHtml } = await import("./exporters");
+  const st = useBuilder.getState();
+  const html = pageHtml(st.doc, st.page());
+  const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+  const w = window.open(url, "_blank", "noopener");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  if (!w) throw new Error("The browser blocked the preview window — allow pop-ups for this site.");
+}

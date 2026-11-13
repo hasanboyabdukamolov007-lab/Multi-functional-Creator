@@ -62,9 +62,12 @@ export default function AuditPage() {
             <h1 className="page-title">{t("audit.title")}</h1>
             <p className="page-subtitle">{t("audit.subtitle")}</p>
           </div>
+          <div className="row">
+          <a className="btn" href={ws("/audit/export.csv")} download><I.IconDownload size={14} /> CSV</a>
           <select className="select" style={{ width: 180 }} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter">
             {PREFIXES.map((p) => <option key={p} value={p}>{p || "All events"}</option>)}
           </select>
+          </div>
         </div>
         {error ? <div className="empty">{error}</div> : events.length === 0 ? <div className="empty">{t("common.none")}</div> : (
           <div className="card" style={{ padding: 0 }}>

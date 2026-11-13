@@ -28,6 +28,7 @@ export function registerCoreFunctions() {
     { id: "ui.palette", title: "Open command palette", category: "Panel", shortcut: "mod+k", ai: false, run: () => useUi.getState().setPalette(!useUi.getState().paletteOpen) },
     { id: "ui.copilot.toggle", title: "Toggle Forge copilot", category: "Panel", shortcut: "mod+j", ai: false, run: () => useUi.getState().setCopilot(!useUi.getState().copilotOpen) },
     { id: "ui.sidebar.toggle", title: "Toggle sidebar", category: "Panel", shortcut: "mod+b", run: () => useUi.getState().toggleSidebar() },
+    { id: "ui.shortcuts", title: "Keyboard shortcuts", category: "Panel", shortcut: "shift+?", keywords: ["help", "keys", "hotkeys"], ai: false, run: async () => (await import("../shell/ShortcutsHelp")).useShortcutsHelp.getState().set(true) },
     { id: "ui.onboarding", title: "Show the welcome tour", category: "Panel", keywords: ["help", "tour", "onboarding"], ai: false, run: () => useUi.getState().setOnboarding(true) },
     { id: "ui.fullscreen", title: "Toggle full screen", category: "Panel", ai: false, run: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()) },
   );

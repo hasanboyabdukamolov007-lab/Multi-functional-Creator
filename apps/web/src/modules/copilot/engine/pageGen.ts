@@ -5,6 +5,7 @@ import type { PageSpec } from "./planner";
 export interface GeneratedPage {
   name: string;
   title: string;
+  description: string;
   brand: string;
   tokens: Partial<SiteTokens>;
   nodes: BNode[];
@@ -139,5 +140,5 @@ export function generatePage(spec: PageSpec): GeneratedPage {
         footer(),
       ];
   }
-  return { name, title: `${brand} — ${c.title}`, brand, tokens, nodes: nodes.filter((x): x is BNode => !!x), kind };
+  return { name, title: `${brand} — ${c.title}`, description: c.subtitle.slice(0, 160), brand, tokens, nodes: nodes.filter((x): x is BNode => !!x), kind };
 }

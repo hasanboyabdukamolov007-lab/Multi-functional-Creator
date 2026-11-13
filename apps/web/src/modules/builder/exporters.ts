@@ -51,12 +51,22 @@ export function nodeHtml(node: BNode, depth = 0): string {
 
 export function pageHtml(doc: BuilderDoc, page: BPage): string {
   const vars = Object.entries(tokenVars(doc.tokens)).map(([k, v]) => `  ${k}: ${v};`).join("\n");
+  const title = esc(page.title || page.name);
+  const meta = [
+    page.description ? `<meta name="description" content="${escAttr(page.description)}" />` : "",
+    `<meta property="og:title" content="${title}" />`,
+    page.description ? `<meta property="og:description" content="${escAttr(page.description)}" />` : "",
+    page.ogImage ? `<meta property="og:image" content="${escAttr(page.ogImage)}" />` : "",
+    `<meta name="twitter:card" content="${page.ogImage ? "summary_large_image" : "summary"}" />`,
+    `<meta name="theme-color" content="${escAttr(doc.tokens.primary)}" />`,
+  ].filter(Boolean).join("\n");
   return `<!doctype html>
-<html lang="en">
+<html lang="${escAttr(page.lang || "en")}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(page.title || page.name)}</title>
+<title>${title}</title>
+${meta}
 <style>
 .site {
 ${vars}

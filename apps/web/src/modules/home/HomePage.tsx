@@ -82,6 +82,37 @@ export default function HomePage() {
       .catch(() => setSecrets(null));
   }, [workspaceId]);
 
+  const reload = () => projectsApi.list().then(setProjects).catch(() => setProjects([]));
+  const renameProject = async (p: ProjectSummary) => {
+    const name = window.prompt(t("home.rename"), p.name)?.trim();
+    if (!name || name === p.name) return;
+    try {
+      await projectsApi.rename(p.id, name);
+      void reload();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  const duplicateProject = async (p: ProjectSummary) => {
+    try {
+      await projectsApi.duplicate(p.id);
+      toast(t("home.duplicated", { name: p.name }), "success");
+      void reload();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+  const deleteProject = async (p: ProjectSummary) => {
+    if (!window.confirm(t("home.deleteConfirm", { name: p.name }))) return;
+    try {
+      await projectsApi.remove(p.id);
+      toast(t("home.deleted", { name: p.name }), "success");
+      void reload();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    }
+  };
+
   const stats = [
     { label: t("home.stats.functions"), value: registry.size, Icon: I.IconCommand },
     { label: t("home.stats.projects"), value: projects?.length ?? "—", Icon: I.IconFolder },
@@ -142,20 +173,34 @@ export default function HomePage() {
           <div className="grid-auto">
             {projects.map((p) => {
               const Icon = KIND_ICON[p.kind] ?? I.IconFolder;
+              const open = () => navigate(editorPath(p.kind, p.id));
               return (
-                <button key={p.id} className="card" style={{ textAlign: "left", cursor: "pointer", color: "inherit" }} onClick={() => navigate(editorPath(p.kind, p.id))}>
+                <div
+                  key={p.id}
+                  className="card project-card"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${t("common.open")} ${p.name}`}
+                  onClick={open}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open())}
+                >
                   <div className="row">
                     <span className="icon-btn active" style={{ pointerEvents: "none" }}>
                       <Icon size={17} />
                     </span>
-                    <div className="grow">
+                    <div className="grow" style={{ minWidth: 0 }}>
                       <div className="card-title ellipsis">{p.name}</div>
                       <div className="small muted">
                         {t(`home.kind.${p.kind}`)} · {t("home.updated", { when: relativeTime(p.updated_at, locale) })}
                       </div>
                     </div>
                   </div>
-                </button>
+                  <div className="row project-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <button className="icon-btn" title={t("home.rename")} aria-label={t("home.rename")} onClick={() => void renameProject(p)}><I.IconType size={14} /></button>
+                    <button className="icon-btn" title={t("home.duplicate")} aria-label={t("home.duplicate")} onClick={() => void duplicateProject(p)}><I.IconCopy size={14} /></button>
+                    <button className="icon-btn" title={t("common.delete")} aria-label={t("common.delete")} onClick={() => void deleteProject(p)}><I.IconTrash size={14} /></button>
+                  </div>
+                </div>
               );
             })}
           </div>

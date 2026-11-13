@@ -168,4 +168,41 @@ describe("API", () => {
     const s2 = (await app.inject({ method: "GET", url: `/api/w/${ws}/ai/status`, headers })).json();
     expect(s2.builtIn).toMatchObject({ configured: true, keySource: "vault", keySecretName: "ANTHROPIC_API_KEY" });
   });
+
+  it("detects concurrent project edits and duplicates projects", async () => {
+    const { headers, ws } = await login("projects@example.com");
+    const p = (await app.inject({ method: "POST", url: `/api/w/${ws}/projects`, headers, payload: { name: "Site", kind: "site" } })).json().project;
+    expect(p.version).toBe(1);
+    const a = await app.inject({ method: "PUT", url: `/api/w/${ws}/projects/${p.id}`, headers, payload: { data: { v: "tab A" }, baseVersion: 1 } });
+    expect(a.json().project.version).toBe(2);
+    const stale = await app.inject({ method: "PUT", url: `/api/w/${ws}/projects/${p.id}`, headers, payload: { data: { v: "tab B" }, baseVersion: 1 } });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().code).toBe("conflict");
+    const dup = (await app.inject({ method: "POST", url: `/api/w/${ws}/projects/${p.id}/duplicate`, headers, payload: {} })).json().project;
+    expect(dup.name).toBe("Site (copy)");
+    const got = (await app.inject({ method: "GET", url: `/api/w/${ws}/projects/${dup.id}`, headers })).json().project;
+    expect(got.data).toEqual({ v: "tab A" });
+  });
+
+  it("lists sessions and signs out other devices", async () => {
+    const first = await login("devices@example.com");
+    const second = await login("devices@example.com");
+    const list = (await app.inject({ method: "GET", url: "/api/auth/sessions", headers: second.headers })).json().sessions;
+    expect(list).toHaveLength(2);
+    expect(list.filter((x: { current: boolean }) => x.current)).toHaveLength(1);
+    const r = (await app.inject({ method: "POST", url: "/api/auth/sessions/revoke-others", headers: second.headers })).json();
+    expect(r.revoked).toBe(1);
+    expect((await app.inject({ method: "GET", url: "/api/auth/me", headers: first.headers })).json().user).toBeNull();
+    expect((await app.inject({ method: "GET", url: "/api/auth/me", headers: second.headers })).json().user.email).toBe("devices@example.com");
+  });
+
+  it("exports the audit log as CSV with formula injection neutralised", async () => {
+    const { headers, ws } = await login("csv@example.com");
+    await app.inject({ method: "POST", url: `/api/w/${ws}/projects`, headers, payload: { name: "=HYPERLINK(\"x\")", kind: "site" } });
+    const r = await app.inject({ method: "GET", url: `/api/w/${ws}/audit/export.csv`, headers });
+    expect(r.headers["content-type"]).toContain("text/csv");
+    expect(r.body.split("\r\n")[0]).toBe("time,user,action,target_type,target_id,ip,details");
+    expect(r.body).toContain("project.create");
+    expect(r.body).not.toMatch(/(^|,)"=HYPERLINK/m);
+  });
 });

@@ -81,7 +81,11 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
       `SELECT u.id, u.email, u.name, u.locale, u.prefs FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [sha256(token)],
     );
-    if (row) req.user = row;
+    if (row) {
+      req.user = row;
+      // Track activity for the sessions list, at most once a minute per session.
+      void db.query(`UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1 AND last_seen_at < now() - interval '1 minute'`, [sha256(token)]).catch(() => undefined);
+    }
   });
 
   // Workspace-scoped routes: /api/w/:workspaceId/... — resolve membership + role.
