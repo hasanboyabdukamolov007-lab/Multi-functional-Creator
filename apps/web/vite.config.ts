@@ -17,7 +17,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           three: ["three", "@react-three/fiber", "@react-three/drei"],
-          monaco: ["monaco-editor", "@monaco-editor/react"],
+          monaco: ["@monaco-editor/react"],
         },
       },
     },

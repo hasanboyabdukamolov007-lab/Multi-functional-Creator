@@ -36,7 +36,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function buildApp(config: Config, injected: Partial<AppDeps> = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: config.env === "test" ? false : { level: config.env === "production" ? "info" : "debug", redact: ["req.headers.cookie", "req.headers.authorization"] },
-    bodyLimit: 8 * 1024 * 1024,
+    bodyLimit: 32 * 1024 * 1024, // 3D scenes can embed imported models (up to 15 MB each)
     trustProxy: true,
   });
   const log = (m: string) => app.log.info(m);
