@@ -22,6 +22,12 @@ export interface Config {
   webDist?: string;
   cookieSecure: boolean;
   anthropicApiKey?: string;
+  /** Let the API tester and workflows reach private/internal network addresses (off by default: SSRF protection). */
+  allowPrivateNetwork: boolean;
+  /** Shared secret for the scheduler tick endpoint (external cron / Vercel Cron). */
+  cronSecret?: string;
+  /** Run the in-process workflow scheduler (self-hosted). */
+  scheduler: boolean;
   /** Running as a serverless function (Vercel): no local disk, so an external database is required. */
   serverless?: boolean;
 }
@@ -41,6 +47,9 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || undefined,
     dataDir: onVercel ? "/tmp/mfc-data" : path.resolve(root, process.env.DATA_DIR ?? "data"),
     serverless: onVercel,
+    allowPrivateNetwork: process.env.ALLOW_PRIVATE_NETWORK === "1",
+    cronSecret: process.env.CRON_SECRET || undefined,
+    scheduler: !onVercel && env !== "test" && process.env.SCHEDULER !== "0",
     vaultMasterKey: process.env.VAULT_MASTER_KEY || undefined,
     vaultOldKeys: process.env.VAULT_OLD_KEYS || undefined,
     smtpUrl: process.env.SMTP_URL || undefined,

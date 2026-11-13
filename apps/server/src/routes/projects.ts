@@ -4,7 +4,7 @@ import { z } from "zod";
 import { parse, requirePerm, notFound, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
 
-export const PROJECT_KINDS = ["site", "panel", "app", "api", "scene3d"] as const;
+export const PROJECT_KINDS = ["site", "panel", "app", "api", "scene3d", "db"] as const;
 
 const CreateBody = z.object({
   name: z.string().trim().min(1).max(120),

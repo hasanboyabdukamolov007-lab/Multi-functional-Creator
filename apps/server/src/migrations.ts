@@ -122,4 +122,56 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS id text;
 UPDATE sessions SET id = substr(token_hash, 1, 16) WHERE id IS NULL;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at timestamptz NOT NULL DEFAULT now()`,
   },
+  {
+    id: 4,
+    name: "data-api-workflows",
+    sql: `CREATE TABLE IF NOT EXISTS data_connections (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('postgres','mysql','mongodb')),
+  secret_id uuid NOT NULL REFERENCES secrets(id) ON DELETE CASCADE,
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS saved_requests (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  method text NOT NULL,
+  url text NOT NULL,
+  headers jsonb NOT NULL DEFAULT '{}'::jsonb,
+  body text NOT NULL DEFAULT '',
+  environment text NOT NULL DEFAULT 'development',
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS workflows (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  graph jsonb NOT NULL DEFAULT '{}'::jsonb,
+  enabled boolean NOT NULL DEFAULT false,
+  environment text NOT NULL DEFAULT 'production',
+  webhook_token text NOT NULL,
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS workflow_runs (
+  id uuid PRIMARY KEY,
+  workflow_id uuid NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  trigger text NOT NULL,
+  scheduled_for timestamptz,
+  status text NOT NULL,
+  log jsonb NOT NULL DEFAULT '[]'::jsonb,
+  error text,
+  started_at timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS workflow_runs_schedule ON workflow_runs (workflow_id, scheduled_for) WHERE scheduled_for IS NOT NULL;
+CREATE INDEX IF NOT EXISTS workflow_runs_recent ON workflow_runs (workflow_id, started_at DESC)`,
+  },
 ];

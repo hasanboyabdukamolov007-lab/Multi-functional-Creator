@@ -17,6 +17,11 @@ import { projectRoutes } from "./routes/projects.js";
 import { secretRoutes } from "./routes/secrets.js";
 import { auditRoutes } from "./routes/audit.js";
 import { aiRoutes } from "./routes/ai.js";
+import { httpRoutes } from "./routes/http.js";
+import { dataRoutes } from "./routes/data.js";
+import { workflowRoutes } from "./routes/workflows.js";
+import { publicRoutes } from "./routes/public.js";
+import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
   config: Config;
@@ -70,6 +75,8 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   app.addHook("onRequest", async (req) => {
     if (!req.url.startsWith("/api/")) return;
     if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
+    // Webhooks and the cron tick are called by other servers and carry their own secret; no cookies involved.
+    if (req.url.startsWith("/api/hooks/") || req.url.startsWith("/api/cron/")) return;
     if (req.headers["x-mfc-csrf"] !== "1") throw new HttpError(403, "Missing CSRF header", "csrf");
   });
 
@@ -107,6 +114,15 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(secretRoutes, { prefix: "/api/w/:workspaceId/secrets" });
   await app.register(auditRoutes, { prefix: "/api/w/:workspaceId/audit" });
   await app.register(aiRoutes, { prefix: "/api/w/:workspaceId/ai" });
+  await app.register(httpRoutes, { prefix: "/api/w/:workspaceId/http" });
+  await app.register(dataRoutes, { prefix: "/api/w/:workspaceId/data" });
+  await app.register(workflowRoutes, { prefix: "/api/w/:workspaceId/workflows" });
+  await app.register(publicRoutes, { prefix: "/api" });
+
+  if (config.scheduler) {
+    const stop = startScheduler({ db, ring, mailer, config }, log);
+    app.addHook("onClose", async () => stop());
+  }
 
   // Serve the built web app (single-origin production deployment).
   if (config.webDist && fs.existsSync(path.join(config.webDist, "index.html"))) {
