@@ -22,10 +22,7 @@ export const MODULES: ModuleDef[] = [
   { id: "home", path: "/", labelKey: "nav.home", icon: I.IconHome, group: "create", phase: 1, component: lazy(() => import("./home/HomePage")) },
   { id: "builder", path: "/builder", labelKey: "nav.builder", icon: I.IconBuilder, group: "create", phase: 1, keywords: ["site", "page", "panel", "app", "drag", "drop"], component: lazy(() => import("./builder/BuilderPage")) },
   { id: "studio", path: "/studio", labelKey: "nav.studio", icon: I.IconStudio, group: "create", phase: 1, keywords: ["3d", "model", "animate", "three"], component: lazy(() => import("./studio/StudioPage")) },
-  {
-    id: "data", path: "/data", labelKey: "nav.data", icon: I.IconData, group: "create", phase: 2, component: Planned,
-    plannedFeatures: ["Visual database designer with generated migrations", "Data browser and SQL console (Postgres, MySQL, MongoDB, SQLite)", "API connector & Postman-style tester with response-to-UI binding", "Visual workflow automation: triggers, actions, schedules, webhooks", "API/backend service generator (REST & GraphQL)"],
-  },
+  { id: "data", path: "/data", labelKey: "nav.data", icon: I.IconData, group: "create", phase: 1, keywords: ["api", "sql", "database", "postman", "workflow", "automation", "schema", "webhook", "cron"], component: lazy(() => import("./data/DataPage")) },
   {
     id: "motion", path: "/motion", labelKey: "nav.motion", icon: I.IconMotion, group: "create", phase: 4, component: Planned,
     plannedFeatures: ["UI micro-interaction presets (hover, press, scroll, page transitions)", "After-Effects-style timeline with easing curve editor", "Lottie and animated SVG import / edit / export", "MP4, WebM and GIF rendering of animations and 3D scenes"],

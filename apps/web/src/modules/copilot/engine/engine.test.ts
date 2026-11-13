@@ -120,4 +120,20 @@ describe("builder edits, panel and fallbacks", () => {
     expect(plan("toggle grid", ctx({ functions: fns })).actions[0]).toMatchObject({ kind: "function", id: "studio.view.grid" });
     expect(plan("write me a poem about autumn", ctx({ functions: fns })).actions[0].kind).toBe("unknown");
   });
+
+  it("plans backends and databases from a description", () => {
+    const one = (input: string) => plan(input, ctx()).actions[0];
+    expect(one("create an API for products with name, price and stock, and customers with name, email")).toMatchObject({
+      kind: "dataGen",
+      target: "api",
+      resources: [{ name: "product", fields: ["name", "price", "stock"] }, { name: "customer", fields: ["name", "email"] }],
+    });
+    expect(one("build a REST API with JWT for a todo app with tasks with title, done and due_date")).toMatchObject({ kind: "dataGen", auth: "jwt", resources: [{ name: "task", fields: ["title", "done", "due_date"] }] });
+    expect(one("mahsulotlar uchun API yarat: nomi, narxi")).toMatchObject({ kind: "dataGen", resources: [{ name: "product", fields: ["name", "price"] }] });
+    expect(one("создай базу данных для пациентов с полями имя, телефон")).toMatchObject({ kind: "dataGen", target: "schema", resources: [{ name: "patient", fields: ["name", "phone"] }] });
+    expect(one("create a database and api for orders with total, status and product")).toMatchObject({ kind: "dataGen", target: "both", resources: [{ name: "order", fields: ["total", "status", "product_id"] }] });
+    expect(one("create a landing page for my API product").kind).toBe("page");
+    expect(one("export as next.js")).toMatchObject({ kind: "export", format: "next" });
+    expect(one("export the site as a react native app")).toMatchObject({ kind: "export", format: "expo" });
+  });
 });

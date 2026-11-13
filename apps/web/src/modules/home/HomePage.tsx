@@ -8,7 +8,7 @@ import { editorPath, PROJECT_KINDS, projectsApi, type ProjectKind, type ProjectS
 import { toast } from "../../lib/ui";
 import * as I from "../../ui/icons";
 
-const KIND_ICON: Record<ProjectKind, typeof I.IconHome> = { site: I.IconGlobe, panel: I.IconHome, app: I.IconPhone, api: I.IconCode, scene3d: I.IconStudio };
+const KIND_ICON: Record<ProjectKind, typeof I.IconHome> = { site: I.IconGlobe, panel: I.IconHome, app: I.IconPhone, api: I.IconCode, scene3d: I.IconStudio, db: I.IconData };
 
 export function NewProjectModal({ onClose, defaultKind = "site" }: { onClose: () => void; defaultKind?: ProjectKind }) {
   const t = useT();

@@ -28,7 +28,7 @@ const S = () => useStudio.getState();
 const navigate = (p: string) => getCtx().navigate(p);
 
 function requireBuilder() {
-  if (!B().projectId) throw new Error("No builder project is open. Call open_project or create_project (kind site, panel, app or api) first.");
+  if (!B().projectId) throw new Error("No builder project is open. Call open_project or create_project (kind site, panel or app) first.");
 }
 function requireStudio() {
   if (!S().projectId) throw new Error("No 3D scene is open. Call open_project or create_project with kind scene3d first.");
@@ -38,7 +38,7 @@ async function openProject(id: string) {
   const p = await projectsApi.get(id);
   navigate(editorPath(p.kind, p.id));
   if (p.kind === "scene3d") await S().open(p.id);
-  else await B().open(p.id);
+  else if (p.kind !== "api" && p.kind !== "db") await B().open(p.id);
   return { id: p.id, name: p.name, kind: p.kind };
 }
 
@@ -141,13 +141,13 @@ export const CLIENT_TOOLS: ClientTool[] = [
   },
   {
     name: "open_project",
-    description: "Open a project in its editor (builder for site/panel/app/api, 3D studio for scene3d).",
+    description: "Open a project in its editor (builder for site/panel/app, 3D studio for scene3d, Data & APIs for api and db).",
     input_schema: obj({ id: { type: "string" } }, ["id"]),
     run: (i) => openProject(String(i.id)),
   },
   {
     name: "create_project",
-    description: "Create a new project and open it. Kinds: site, panel (admin dashboard), app (web/mobile app), api (API service docs/landing), scene3d.",
+    description: "Create a new project and open it. Kinds: site, panel (admin dashboard), app (web/mobile app), api (REST API generator spec), db (database schema), scene3d.",
     input_schema: obj({ name: { type: "string" }, kind: { type: "string", enum: [...PROJECT_KINDS] } }, ["name", "kind"]),
     run: async (i) => {
       const p = await projectsApi.create(String(i.name), i.kind as ProjectKind);

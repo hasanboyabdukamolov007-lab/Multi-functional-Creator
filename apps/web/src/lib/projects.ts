@@ -1,8 +1,8 @@
 import { api } from "./api";
 import { ws } from "./session";
 
-export type ProjectKind = "site" | "panel" | "app" | "api" | "scene3d";
-export const PROJECT_KINDS: ProjectKind[] = ["site", "panel", "app", "api", "scene3d"];
+export type ProjectKind = "site" | "panel" | "app" | "api" | "scene3d" | "db";
+export const PROJECT_KINDS: ProjectKind[] = ["site", "panel", "app", "api", "scene3d", "db"];
 
 export interface ProjectSummary {
   id: string;
@@ -28,7 +28,10 @@ export const projectsApi = {
 
 /** Which editor opens a project kind. */
 export function editorPath(kind: ProjectKind, id: string) {
-  return kind === "scene3d" ? `/studio?project=${id}` : `/builder?project=${id}`;
+  if (kind === "scene3d") return `/studio?project=${id}`;
+  if (kind === "api") return `/data?tab=api&project=${id}`;
+  if (kind === "db") return `/data?tab=schema&project=${id}`;
+  return `/builder?project=${id}`;
 }
 
 /** Debounced saver that coalesces rapid edits into one request. */

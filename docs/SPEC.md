@@ -36,7 +36,15 @@ Target: **500+ functions**, all reachable from the command palette.
 1. **Foundation + core** — monorepo, app shell, themes + theme editor, i18n (en/uz/ru), function registry +
    command palette, magic-link auth, workspaces/roles, Secrets Vault, visual+code builder, 3D studio,
    AI copilot, every module scaffolded and registered.
-2. **Builder depth** — component library (100+), templates, exporters (React/Next/RN/API), data tools.
+2. ✅ **Builder depth** — component library (100+), templates, exporters (React/Next/RN/API), data tools.
+   Shipped: static/Next.js/Expo project ZIPs; API tester (server-side, SSRF-guarded, vault templating); database
+   browser (Postgres/MySQL/MongoDB, read-only by default, audited); schema designer with migration diffs; Fastify +
+   Postgres API generator with OpenAPI; workflow engine (manual/webhook/cron; HTTP/condition/set/delay/email/log/
+   transform) with run history; Forge intents for backends and exports.
+   Design notes: outbound requests resolve DNS at connect time and refuse private/loopback/link-local addresses
+   unless `ALLOW_PRIVATE_NETWORK=1`; database URLs are vault secrets decrypted only per request; workflow logs are
+   redacted of every secret value used; scheduled runs are de-duplicated by a unique `(workflow_id, scheduled_for)`
+   index so a long-running scheduler and `/api/cron/tick` can coexist.
 3. **Deploy & ops** — deploy targets, secret injection, monitoring, notifications.
 4. **Creative depth** — motion timeline, Lottie, video export, image editor, assets/CDN, 3D asset library.
 5. **Collaboration & ecosystem** — real-time co-editing, comments, versioning/Git, marketplace, plugin SDK.

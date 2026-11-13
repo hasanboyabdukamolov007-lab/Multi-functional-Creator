@@ -1,5 +1,6 @@
 import * as L from "./lexicon";
 import type { Lang } from "./lexicon";
+import { parseDataIntent, type DataIntent } from "./dataIntent";
 
 /** What the engine knows about the workspace when planning (a plain snapshot, so planning stays pure). */
 export interface PlanContext {
@@ -53,6 +54,7 @@ export type Action =
   | { kind: "vaultAudit" }
   | { kind: "scan"; text: string }
   | { kind: "export"; format: string }
+  | DataIntent
   | { kind: "function"; id: string; title: string }
   | { kind: "unknown"; suggestions: Array<{ id: string; title: string }> };
 
@@ -196,9 +198,12 @@ function planClause(clause: string, ctx: PlanContext, lang: Lang): Action[] {
   const moduleKey = L.firstKey(text, tokens, L.MODULE_WORDS);
   if (has(W.open) && moduleKey && !isCreate && !isAdd) return [{ kind: "navigate", module: moduleKey }];
 
+  const dataIntent = isCreate ? parseDataIntent(clause) : null;
+  if (dataIntent) return [dataIntent];
+
   const exportHit = has(W.export);
   if (exportHit) {
-    const format = /\breact\b|jsx/.test(text) ? "react" : /\bhtml\b/.test(text) ? "html" : /\bglb\b/.test(text) ? "glb" : /gltf/.test(text) ? "gltf" : /\bobj\b/.test(text) ? "obj" : /\bstl\b/.test(text) ? "stl" : /png|image|rasm|картин/.test(text) ? "png" : /json/.test(text) ? "json" : ctx.module === "studio" ? "glb" : "html";
+    const format = /next\.?js|\bnext\b/.test(text) ? "next" : /expo|react native|native app|мобильн|mobil/.test(text) ? "expo" : /\bzip\b|static site|whole site|all pages|butun sayt|весь сайт/.test(text) ? "site" : /\breact\b|jsx/.test(text) ? "react" : /\bhtml\b/.test(text) ? "html" : /\bglb\b/.test(text) ? "glb" : /gltf/.test(text) ? "gltf" : /\bobj\b/.test(text) ? "obj" : /\bstl\b/.test(text) ? "stl" : /png|image|rasm|картин/.test(text) ? "png" : /json/.test(text) ? "json" : ctx.module === "studio" ? "glb" : "html";
     return [{ kind: "export", format }];
   }
 

@@ -240,6 +240,13 @@ function Toolbar() {
       <button className="btn btn-sm" onClick={() => runFunction("builder.export.react")}>
         <I.IconDownload size={14} /> React
       </button>
+      <select className="select input-sm" style={{ width: 128 }} value="" aria-label={t("builder.exportProject")} onChange={(e) => e.target.value && runFunction(e.target.value)}>
+        <option value="">{t("builder.exportProject")}</option>
+        <option value="builder.export.site">Static site (ZIP)</option>
+        <option value="builder.export.next">Next.js (ZIP)</option>
+        <option value="builder.export.expo">Expo / React Native (ZIP)</option>
+        <option value="builder.export.json">Project JSON</option>
+      </select>
     </div>
   );
 }
@@ -250,7 +257,7 @@ function ProjectPicker() {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [showNew, setShowNew] = useState(false);
   useEffect(() => {
-    projectsApi.list().then((p) => setProjects(p.filter((x) => x.kind !== "scene3d"))).catch(() => setProjects([]));
+    projectsApi.list().then((p) => setProjects(p.filter((x) => x.kind === "site" || x.kind === "panel" || x.kind === "app"))).catch(() => setProjects([]));
   }, []);
   return (
     <div className="page">

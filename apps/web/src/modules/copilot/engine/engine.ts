@@ -385,9 +385,34 @@ async function execute(a: Action, lang: Lang, steps: StepResult[], notes: string
       return;
     }
     case "export": {
-      const id = { html: "builder.export.html", react: "builder.export.react", glb: "studio.export.glb", gltf: "studio.export.gltf", obj: "studio.export.obj", stl: "studio.export.stl", png: "studio.export.png", json: useUi.getState().module === "studio" ? "studio.export.json" : "builder.export.json" }[a.format] ?? "builder.export.html";
+      const id = { site: "builder.export.site", next: "builder.export.next", expo: "builder.export.expo", html: "builder.export.html", react: "builder.export.react", glb: "studio.export.glb", gltf: "studio.export.gltf", obj: "studio.export.obj", stl: "studio.export.stl", png: "studio.export.png", json: useUi.getState().module === "studio" ? "studio.export.json" : "builder.export.json" }[a.format] ?? "builder.export.html";
       await runFunction(id);
       ok(fmt(t.export, { format: a.format.toUpperCase() }));
+      return;
+    }
+    case "dataGen": {
+      const auth = a.auth ?? "apiKey";
+      const name = a.resources.map((r) => r.name.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())).join(" & ");
+      try {
+        let apiId: string | null = null;
+        if (a.target !== "schema") {
+          const r = (await runFunction("data.api.create", { name: `${name} API`, auth, resources: a.resources.map((r) => ({ name: r.name, fields: r.fields.map((f) => ({ name: f })) })) })) as { id: string; files: number };
+          apiId = r.id;
+          ok(fmt(t.ran, { title: `${name} API` }), `${a.resources.map((r) => `${r.name}(${r.fields.join(", ")})`).join(" · ")} → ${r.files} files`);
+        }
+        if (a.target !== "api") {
+          if (apiId) await runFunction("data.api.to-schema", { projectId: apiId });
+          else {
+            const { specFromResources, schemaFromSpec } = await import("../../data/functions");
+            const { projectsApi } = await import("../../../lib/projects");
+            const p = await projectsApi.create(`${name} database`, "db", schemaFromSpec(specFromResources(name, a.resources, auth)));
+            getCtx().navigate(`/data?tab=schema&project=${p.id}`);
+          }
+          ok(fmt(t.ran, { title: `${name} database` }), a.resources.map((r) => r.name).join(", "));
+        }
+      } catch (e) {
+        fail(fmt(t.ran, { title: name }), (e as Error).message);
+      }
       return;
     }
     case "function":

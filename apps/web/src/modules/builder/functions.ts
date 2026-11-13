@@ -1,5 +1,5 @@
 import { registry, type AppFunction } from "../../lib/registry";
-import { downloadText, pickFile, slugify } from "../../lib/download";
+import { downloadBlob, downloadText, pickFile, slugify } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { scanForLeaks } from "@mfc/core";
 import { previewInNewTab, useBuilder, useBuilderUi } from "./store";
@@ -160,6 +160,27 @@ export function registerBuilderFunctions() {
     { id: "builder.save", title: "Save project now", category: "Builder · Project", shortcut: "mod+s", when: hasProject, run: () => B().saveNow().then(() => toast("Saved", "success")) },
     { id: "builder.export.html", title: "Export page as HTML", category: "Builder · Export", ai: false, when: hasProject, run: () => { const html = pageHtml(B().doc, B().page()); leakGuard(html); downloadText(`${slugify(B().page().name)}.html`, html, "text/html"); } },
     { id: "builder.export.react", title: "Export page as React component", category: "Builder · Export", ai: false, when: hasProject, run: () => { const jsx = pageReact(B().page()); leakGuard(jsx); downloadText(`${slugify(B().page().name)}.jsx`, jsx); downloadText("site.css", siteCss(B().doc), "text/css"); } },
+    ...([
+      ["site", "Export whole site as static HTML (ZIP)", ["zip", "static", "netlify", "pages"]],
+      ["next", "Export as Next.js project (ZIP)", ["zip", "nextjs", "react", "vercel"]],
+      ["expo", "Export as React Native / Expo app (ZIP)", ["zip", "mobile", "ios", "android", "react native"]],
+    ] as const).map(([kind, title, keywords]): AppFunction => ({
+      id: `builder.export.${kind}`,
+      title,
+      category: "Builder · Export",
+      keywords: [...keywords],
+      when: hasProject,
+      run: async () => {
+        const m = await import("./projectExport");
+        const name = B().projectName || "site";
+        const files = kind === "site" ? m.staticSite(B().doc, name) : kind === "next" ? m.nextProject(B().doc, name) : m.expoProject(B().doc, name);
+        leakGuard(Object.values(files).join("\n"));
+        const root = `${slugify(name) || "project"}-${kind}`;
+        downloadBlob(`${root}.zip`, new Blob([m.zip(files, root) as BlobPart], { type: "application/zip" }));
+        toast(`Exported ${Object.keys(files).length} files`, "success");
+        return { files: Object.keys(files).length };
+      },
+    })),
     { id: "builder.export.css", title: "Export site stylesheet", category: "Builder · Export", ai: false, when: hasProject, run: () => downloadText("site.css", siteCss(B().doc), "text/css") },
     { id: "builder.export.json", title: "Export project document (JSON)", category: "Builder · Export", ai: false, when: hasProject, run: () => downloadText(`${slugify(B().projectName)}.builder.json`, JSON.stringify(B().doc, null, 2), "application/json") },
     {

@@ -133,6 +133,8 @@ export const useBuilder = create<BuilderState>((set, get) => {
           const p = await projectsApi.get<BuilderDoc>(projectId);
           let doc = p.data as BuilderDoc;
           if (!validDoc(doc)) {
+            // API specs and database schemas live in Data & APIs; never overwrite them with a page.
+            if ((p.kind === "api" || p.kind === "db") && p.data && Object.keys(p.data).length) throw new Error("This project is edited in Data & APIs");
             doc = newDoc();
             p.version = (await projectsApi.save(projectId, { data: doc, baseVersion: p.version })).version;
           }

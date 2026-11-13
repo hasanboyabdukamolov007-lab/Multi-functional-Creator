@@ -3,10 +3,10 @@
 A professional control panel for building **websites, admin panels, web & mobile apps, APIs and 3D scenes** — with a
 secure **Secrets Vault** and **Forge**, a built-in expert AI copilot that can operate the whole panel.
 
-Everything in the panel is a registered *function* (currently **522**): reachable from the command palette
+Everything in the panel is a registered *function* (currently **620**): reachable from the command palette
 (<kbd>Ctrl/⌘ K</kbd>), keyboard shortcuts, and the copilot.
 
-> Status: **Phase 1** of 6 (see [`docs/SPEC.md`](docs/SPEC.md)). Modules marked *P2–P5* in the sidebar are on the roadmap.
+> Status: **Phase 2** of 6 complete (see [`docs/SPEC.md`](docs/SPEC.md)). Modules marked *P3–P5* in the sidebar are on the roadmap.
 
 ## What's in Phase 1
 
@@ -18,6 +18,18 @@ Everything in the panel is a registered *function* (currently **522**): reachabl
 | **Forge copilot** | **Works on its own — no AI model, no API key.** A built-in engine that understands English, O‘zbekcha and Русский, plans multi-step requests and carries them out with the panel's own tools: industry-aware pages in 12 domains (landing, dashboard, store, portfolio, blog, pricing, contact, coming soon, mobile) written in your language, component inserts and restyling, site palettes, 3D scenes from descriptions (shapes, counts, colors, 24 materials, layouts, pedestal, lighting, environments, animations), panel themes, navigation, vault audits, leak scans, exports and any of 500+ functions. **AI add-ons are optional and off by default**: an admin can enable Claude (agentic, with web search) or add OpenAI-compatible providers in Settings → AI. |
 | **Shell** | 12 built-in themes + live **theme editor** (import/export), English / O‘zbekcha / Русский, command palette, shortcuts, dockable/resizable panels, onboarding tour, toasts. |
 | **Teams** | Passwordless **magic-link** sign-in, multi-tenant workspaces, owner/admin/editor/viewer roles, **audit log** of sign-ins, reveals, exports and settings changes. |
+
+## What's in Phase 2
+
+| Module | Highlights |
+|---|---|
+| **Builder (deeper)** | 100+ components, accessibility checker, and **project exporters**: whole site as static HTML, a **Next.js** App Router project, or a **React Native / Expo** app — each as a ZIP that builds as-is. |
+| **API tester** | Postman-style requests sent **from the server** (SSRF-guarded: private networks blocked, redirects re-checked, size/time caps), `{{ secrets.NAME }}` from the vault with values masked in responses, saved requests, cURL / fetch snippets, insert JSON responses into the builder as a table. |
+| **Database browser** | PostgreSQL, MySQL/MariaDB and MongoDB connections whose URLs live in the vault; schema tree, SQL console with **read-only transactions by default**, 1000-row cap, CSV/JSON export, every query audited. |
+| **Schema designer** | Drag-and-drop ER diagram with foreign keys, PostgreSQL/MySQL DDL, **migration diff** against what was last applied, apply to a connected database in one click. |
+| **API generator** | Describe resources → a complete **Fastify + PostgreSQL** service: CRUD with zod validation, pagination/sorting, API-key or JWT auth, SQL migrations, OpenAPI 3.1, Dockerfile, README — downloaded as a ZIP. |
+| **Workflows** | Visual automations: manual, **webhook** and **cron** triggers; HTTP, condition, variables, delay, email, log and transform steps; `{{ }}` templating with vault secrets; run history with redacted logs. Scheduled runs work on a long-running server and on Vercel via `/api/cron/tick`. |
+| **Forge** | Understands backend requests offline, e.g. *"create a database and API for orders with total, status and product, and customers with name, email"* (also in O‘zbekcha and Русский), and project exports (*"export as Next.js"*). |
 
 ## Quick start (development)
 
@@ -67,6 +79,10 @@ API runs as one streaming Node function.
    - `MAIL_FROM` — e.g. `Multi-functional Creator <you@gmail.com>`
 4. **Redeploy**, open your `*.vercel.app` URL and sign in. Forge works right away; AI add-ons are optional.
 
+**Scheduled workflows on Vercel:** set `CRON_SECRET` and add a cron job (Vercel Cron or any external pinger) that
+calls `GET /api/cron/tick` with `Authorization: Bearer <CRON_SECRET>` every minute (Vercel's Hobby plan allows daily
+crons only, so use an external pinger there). On a long-running server the built-in scheduler needs nothing.
+
 Limits on Vercel: request bodies are capped at 4.5 MB (so large imported 3D models can't be saved until the asset
 manager ships), and a single copilot turn can run up to 300 s.
 
@@ -95,11 +111,14 @@ pnpm test
 
 Covers the core package (leak scanner, `.env` round-trips, roles, registry) and the API (vault crypto incl. tampering
 and key rotation, magic-link auth, encrypted storage, reveal auditing, rotation/rollback, `.env` import/export with
-project overrides, role enforcement and workspace isolation, copilot configuration).
+project overrides, role enforcement and workspace isolation, copilot configuration), the network guard, templating,
+cron, the API tester, workflows (webhooks, branching, secret redaction, schedule de-duplication), and — with
+`TEST_PG_URL` set — the database browser against a real PostgreSQL. The web package tests the Forge planner, the SQL and
+API generators and the project exporters (`pnpm --filter @mfc/web test`).
 
 ## Roadmap
 
-2. Component library to 100+, exporters (Next.js / React Native / API generator), data & API tools, workflows
+2. ✅ Component library to 100+, exporters (Next.js / React Native / API generator), data & API tools, workflows
 3. Deploy targets (Vercel, Netlify, VPS/Docker, AWS/GCP/Railway, GitHub, app stores) with vault injection; monitoring
 4. Motion timeline & Lottie, video/GIF export, image & vector editor, brand kit, asset manager/CDN, 3D asset library
 5. Real-time co-editing, comments, version history & Git, marketplace, plugin SDK
