@@ -23,6 +23,7 @@ import { workflowRoutes } from "./routes/workflows.js";
 import { publicRoutes } from "./routes/public.js";
 import { forgeRoutes } from "./routes/forge.js";
 import { deployRoutes } from "./routes/deploy.js";
+import { monitoringRoutes } from "./routes/monitoring.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -81,7 +82,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
     if (!req.url.startsWith("/api/")) return;
     if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
     // Webhooks and the cron tick are called by other servers and carry their own secret; no cookies involved.
-    if (req.url.startsWith("/api/hooks/") || req.url.startsWith("/api/cron/")) return;
+    if (req.url.startsWith("/api/hooks/") || req.url.startsWith("/api/cron/") || req.url === "/api/collect") return;
     if (req.headers["x-mfc-csrf"] !== "1") throw new HttpError(403, "Missing CSRF header", "csrf");
   });
 
@@ -135,6 +136,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(workflowRoutes, { prefix: "/api/w/:workspaceId/workflows" });
   await app.register(forgeRoutes, { prefix: "/api/w/:workspaceId/forge" });
   await app.register(deployRoutes, { prefix: "/api/w/:workspaceId/deploy" });
+  await app.register(monitoringRoutes, { prefix: "/api/w/:workspaceId/monitoring" });
   await app.register(publicRoutes, { prefix: "/api" });
 
   if (config.scheduler) {

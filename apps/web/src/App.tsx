@@ -9,6 +9,7 @@ import { toast } from "./lib/ui";
 
 const LoginPage = lazy(() => import("./modules/auth/LoginPage"));
 const VerifyPage = lazy(() => import("./modules/auth/VerifyPage"));
+const StatusPage = lazy(() => import("./modules/monitoring/StatusPage"));
 
 function NotFound() {
   const t = useT();
@@ -52,6 +53,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/verify" element={<VerifyPage />} />
+          <Route path="/status/:slug" element={<StatusPage />} />
           <Route
             element={
               <Protected>

@@ -30,6 +30,7 @@ describe("deploy targets (mock providers)", () => {
   const objects = new Map<string, Buffer>();
   const vercelFiles = new Set<string>();
   let headers: Record<string, string> = {};
+  const mockState = { flakyUp: true };
   let ws = "";
 
   beforeAll(async () => {
@@ -81,6 +82,8 @@ describe("deploy targets (mock providers)", () => {
           return req.headers["x-mfc-signature"] === `sha256=${sig}` ? json(200, { url: "https://ci.example.com/run/1" }) : json(401, { message: "bad sig" });
         }
         if (url === "/notify") return json(200, {});
+        if (url === "/up") return (res.writeHead(200, { "content-type": "text/html" }), res.end("<h1>All good</h1>"));
+        if (url === "/flaky") return mockState.flakyUp ? (res.writeHead(200), res.end("ok")) : (res.writeHead(503), res.end("down"));
         json(404, { message: `no route ${req.method} ${url}` });
       });
     });
@@ -184,5 +187,70 @@ describe("deploy targets (mock providers)", () => {
     expect(n.some((x) => x.event === "deploy.ready" && /Deployed Bean There/.test(x.title))).toBe(true);
     // zlib round trip used for bundles
     expect(zlib.gunzipSync(zlib.gzipSync(Buffer.from("ok"))).toString()).toBe("ok");
+  });
+
+  it("monitors uptime, opens and resolves incidents with notifications, and serves a status page", async () => {
+    const { runDueChecks } = await import("./lib/monitoring.js");
+    await app.deps.db.query(`INSERT INTO notification_channels (id, workspace_id, name, kind, config, events) VALUES ($1, $2, 'uptime hook', 'webhook', $3, '{monitor.down,monitor.up}')`, [crypto.randomUUID(), ws, JSON.stringify({ url: `${base}/notify` })]);
+    const mk = async (name: string, path: string, extra: Record<string, unknown> = {}) => (await app.inject({ method: "POST", url: `/api/w/${ws}/monitoring/monitors`, headers, payload: { name, url: `${base}${path}`, intervalS: 60, public: true, ...extra } })).json().id as string;
+    const up = await mk("Website", "/up", { keyword: "All good" });
+    const flaky = await mk("API", "/flaky");
+    const due = () => app.deps.db.query(`UPDATE monitors SET next_check_at = now() - interval '1 second'`);
+    expect(await runDueChecks(app.deps)).toBe(2);
+    mockState.flakyUp = false;
+    await due();
+    await runDueChecks(app.deps);
+    await due();
+    await runDueChecks(app.deps); // second consecutive failure → incident
+    let mons = (await app.inject({ method: "GET", url: `/api/w/${ws}/monitoring/monitors`, headers })).json().monitors;
+    expect(mons.find((m: { id: string }) => m.id === up).state).toBe("up");
+    expect(mons.find((m: { id: string }) => m.id === flaky).state).toBe("down");
+    const inc = (await app.inject({ method: "GET", url: `/api/w/${ws}/monitoring/incidents`, headers })).json().incidents;
+    expect(inc[0]).toMatchObject({ title: "API is down", resolved_at: null });
+    mockState.flakyUp = true;
+    const manual = (await app.inject({ method: "POST", url: `/api/w/${ws}/monitoring/monitors/${flaky}/check`, headers, payload: {} })).json();
+    expect(manual).toMatchObject({ ok: true, state: "up" });
+    await new Promise((r) => setTimeout(r, 200));
+    const events = seen.filter((x) => x.url === "/notify").map((x) => JSON.parse(x.body.toString()).event);
+    expect(events).toContain("monitor.down");
+    expect(events).toContain("monitor.up");
+    mons = (await app.inject({ method: "GET", url: `/api/w/${ws}/monitoring/monitors`, headers })).json().monitors;
+    expect(mons.find((m: { id: string }) => m.id === flaky).summary.uptime).toBeCloseTo(0.5, 1);
+
+    const sp = await app.inject({ method: "PUT", url: `/api/w/${ws}/monitoring/status-page`, headers, payload: { slug: "bean-status", title: "Bean There status" } });
+    expect(sp.json().url).toMatch(/\/status\/bean-status$/);
+    const pub = (await app.inject({ method: "GET", url: "/api/status/bean-status" })).json();
+    expect(pub).toMatchObject({ title: "Bean There status", overall: "operational" });
+    expect(pub.monitors).toHaveLength(2);
+    expect(pub.incidents[0].resolved_at).not.toBeNull();
+    // Private monitor URLs are refused when the server isn't allowed to reach private networks.
+    expect((await app.inject({ method: "POST", url: `/api/w/${ws}/monitoring/monitors`, headers, payload: { name: "x", url: "file:///etc/passwd" } })).statusCode).toBe(400);
+  });
+
+  it("collects cookieless analytics, Web Vitals and errors and aggregates them", async () => {
+    const site = (await app.inject({ method: "POST", url: `/api/w/${ws}/monitoring/sites`, headers, payload: { name: "Bean", domains: ["beanthere.uz"] } })).json();
+    const js = await app.inject({ method: "GET", url: "/api/collect.js" });
+    expect(js.headers["content-type"]).toContain("javascript");
+    expect(js.body).toContain("largest-contentful-paint");
+    const send = (body: Record<string, unknown>, ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Mobile Safari/604.1", origin = "https://beanthere.uz") =>
+      app.inject({ method: "POST", url: "/api/collect", headers: { "content-type": "text/plain;charset=UTF-8", "user-agent": ua, origin }, payload: JSON.stringify({ k: site.key, ...body }) });
+    expect((await send({ t: "pageview", p: "/", r: "https://google.com/search?q=coffee" })).statusCode).toBe(204);
+    await send({ t: "pageview", p: "/menu" });
+    await send({ t: "pageview", p: "/" }, "Mozilla/5.0 (Windows NT 10.0) Chrome/130.0 Safari/537.36");
+    await send({ t: "vital", n: "LCP", v: 1800 });
+    await send({ t: "vital", n: "LCP", v: 3200 });
+    await send({ t: "vital", n: "CLS", v: 0.02 });
+    await send({ t: "error", n: "TypeError: x is undefined", m: { stack: "at menu.js:10:5" }, p: "/menu" });
+    await send({ t: "event", n: "order_click" });
+    expect((await send({ t: "vital", n: "EVIL", v: 1 })).statusCode).toBe(400);
+    expect((await send({ t: "pageview" }, undefined, "https://evil.example")).statusCode).toBe(403);
+    expect((await app.inject({ method: "POST", url: "/api/collect", headers: { "content-type": "text/plain" }, payload: JSON.stringify({ k: "nope", t: "pageview" }) })).statusCode).toBe(404);
+    const st = (await app.inject({ method: "GET", url: `/api/w/${ws}/monitoring/sites/${site.id}/stats?range=24h`, headers })).json();
+    expect(st.totals).toMatchObject({ views: 3, visitors: 2, errors: 1, events: 1 });
+    expect(st.pages[0]).toMatchObject({ key: "/", count: 2 });
+    expect(st.referrers.find((r: { key: string }) => r.key === "google.com")).toBeTruthy();
+    expect(st.devices.map((d: { key: string }) => d.key).sort()).toEqual(["desktop", "mobile"]);
+    expect(st.vitals.find((v: { name: string }) => v.name === "LCP").p75).toBeGreaterThan(1800);
+    expect(st.errors[0]).toMatchObject({ message: "TypeError: x is undefined", count: 1, stack: "at menu.js:10:5" });
   });
 });

@@ -4,6 +4,7 @@ import { registerStudioExtraFunctions, registerStudioFunctions } from "./modules
 import { registerVaultFunctions } from "./modules/vault/functions";
 import { registerCopilotFunctions } from "./modules/copilot/functions";
 import { registerDataFunctions } from "./modules/data/functions";
+import { registerDeployFunctions } from "./modules/deploy/functions";
 
 let done = false;
 /** Register every panel function. Runs once at startup so the palette and copilot see them all. */
@@ -16,6 +17,7 @@ export function registerAllFunctions() {
   registerVaultFunctions();
   registerCopilotFunctions();
   registerDataFunctions();
+  registerDeployFunctions();
   registerPanelTweaks();
   registerBuilderExtraFunctions();
   registerStudioExtraFunctions();

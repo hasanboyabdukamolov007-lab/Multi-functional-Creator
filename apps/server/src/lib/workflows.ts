@@ -223,6 +223,7 @@ export async function runWorkflow(deps: WorkflowDeps, wf: WorkflowRow, trigger: 
     error = secrets.redact((e as Error).message);
   }
   const status = error ? "failed" : "succeeded";
+  if (error && trigger.kind !== "test") void import("./notify.js").then((n) => n.notify(deps, wf.workspace_id, "workflow.failed", { title: `Workflow failed: ${wf.name}`, text: error ?? "", level: "error" })).catch(() => undefined);
   await db.query(`UPDATE workflow_runs SET status = $2, log = $3, error = $4, finished_at = now() WHERE id = $1`, [runId, status, JSON.stringify(log), error]);
   return { id: runId, status, log, error };
 }
@@ -253,8 +254,8 @@ export function startScheduler(deps: WorkflowDeps, log: (m: string) => void): ()
   const timer = setInterval(() => {
     if (busy) return;
     busy = true;
-    tickSchedules(deps)
-      .then((n) => n && log(`scheduler: ran ${n} workflow(s)`))
+    Promise.all([tickSchedules(deps), import("./monitoring.js").then((m) => m.runDueChecks(deps))])
+      .then(([n, c]) => (n || c) && log(`scheduler: ran ${n} workflow(s), ${c} uptime check(s)`))
       .catch((e) => log(`scheduler error: ${(e as Error).message}`))
       .finally(() => (busy = false));
   }, 30_000);

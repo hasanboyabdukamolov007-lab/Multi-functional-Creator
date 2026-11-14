@@ -421,3 +421,15 @@ html[data-scheme="dark"] .viz-root { --series-1: #3987e5; --series-2: #d95926; }
   .player-progress { order: -1; flex-basis: 100%; }
   .player-captions { bottom: 92px; }
 }
+.barlist-row { position: relative; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; overflow: hidden; font-size: 13px; }
+.barlist-fill { position: absolute; inset: 0 auto 0 0; background: var(--c); opacity: .16; border-radius: 6px; }
+.barlist-label { position: relative; flex: 1; min-width: 0; }
+.barlist-value { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.uptime-bars { display: flex; gap: 2px; height: 30px; align-items: stretch; }
+.uptime-bar { flex: 1; min-width: 2px; border-radius: 2px; }
+.h-good { --h: var(--mfc-success); } .h-warn { --h: var(--mfc-warning); } .h-bad { --h: var(--mfc-danger); } .h-none { --h: var(--mfc-border); }
+.uptime-bar { background: var(--h); }
+.health-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid color-mix(in srgb, var(--h) 55%, transparent); background: color-mix(in srgb, var(--h) 14%, transparent); color: var(--mfc-text); white-space: nowrap; }
+.health-badge > span { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: var(--h); color: #fff; font-size: 10px; }
+.code-snippet { position: relative; }
+.code-snippet button { position: absolute; top: 6px; right: 6px; }

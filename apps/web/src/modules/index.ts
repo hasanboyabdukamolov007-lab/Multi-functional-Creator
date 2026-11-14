@@ -34,14 +34,8 @@ export const MODULES: ModuleDef[] = [
     plannedFeatures: ["Image editor with crop, filters, background removal and AI images", "SVG / vector editor", "Brand kit: logos, palettes, fonts and spacing tokens across projects", "Icon & font manager", "Asset manager with WebP/AVIF optimisation and CDN links"],
   },
   { id: "vault", path: "/vault", labelKey: "nav.vault", icon: I.IconVault, group: "ship", phase: 1, keywords: ["secrets", "keys", "tokens", "env"], component: lazy(() => import("./vault/VaultPage")) },
-  {
-    id: "deploy", path: "/deploy", labelKey: "nav.deploy", icon: I.IconDeploy, group: "ship", phase: 3, component: Planned,
-    plannedFeatures: ["One-click Vercel and Netlify deploys", "Own VPS / Docker over SSH with automatic Nginx + SSL", "AWS, GCP and Railway targets", "GitHub push and App Store / Google Play builds via Expo EAS", "Automatic secret injection from the vault (resolver already live)"],
-  },
-  {
-    id: "monitoring", path: "/monitoring", labelKey: "nav.monitoring", icon: I.IconMonitor, group: "ship", phase: 3, component: Planned,
-    plannedFeatures: ["Live logs and error tracking with stack traces", "Analytics: visitors, page views, Core Web Vitals, conversions", "Uptime & health checks with status pages", "Notifications hub: email, Telegram, Slack, push"],
-  },
+  { id: "deploy", path: "/deploy", labelKey: "nav.deploy", icon: I.IconDeploy, group: "ship", phase: 1, keywords: ["vercel", "netlify", "github", "s3", "ssh", "publish", "hosting", "release", "rollback"], component: lazy(() => import("./deploy/DeployPage")) },
+  { id: "monitoring", path: "/monitoring", labelKey: "nav.monitoring", icon: I.IconMonitor, group: "ship", phase: 1, keywords: ["uptime", "analytics", "status", "errors", "vitals", "alerts", "telegram", "slack"], component: lazy(() => import("./monitoring/MonitoringPage")) },
   {
     id: "collab", path: "/collab", labelKey: "nav.collab", icon: I.IconCollab, group: "ecosystem", phase: 5, component: Planned,
     plannedFeatures: ["Real-time co-editing with live cursors (Yjs CRDT)", "Comments and @mentions pinned to canvas or code", "Version history, branches and Git integration"],
