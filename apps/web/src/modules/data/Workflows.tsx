@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { can, ENVIRONMENTS, type Environment } from "@mfc/core";
 import { CRON_PRESETS, NODE_TYPES, OPS, newNode, removeNode, validateGraph, workflowApi, type NodeType, type WfGraph, type WfNode, type WfRun, type Workflow } from "./workflowApi";
 import { useSession } from "../../lib/session";
-import { toast } from "../../lib/ui";
+import { toast, copyText } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
 import { ask, confirmDialog } from "../../ui/dialog";
@@ -102,7 +102,7 @@ function Inspector({ node, graph, wf, onChange, onRemove, onRotate }: { node: Wf
             <div className="col" style={{ gap: 6 }}>
               <pre className="code-view small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>POST {hookUrl}</pre>
               <div className="row">
-                <button className="btn btn-sm" onClick={() => void navigator.clipboard.writeText(hookUrl).then(() => toast(t("common.copied"), "success"))}><I.IconCopy size={13} /> {t("common.copy")}</button>
+                <button className="btn btn-sm" onClick={() => void copyText(hookUrl, t("common.copied"))}><I.IconCopy size={13} /> {t("common.copy")}</button>
                 <button className="btn btn-sm btn-ghost" onClick={onRotate}><I.IconRotate size={13} /> {t("data.wf.rotate")}</button>
               </div>
               <p className="hint">{t("data.wf.webhookHint")}</p>

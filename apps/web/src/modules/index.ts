@@ -25,14 +25,8 @@ export const MODULES: ModuleDef[] = [
   { id: "data", path: "/data", labelKey: "nav.data", icon: I.IconData, group: "create", phase: 1, keywords: ["api", "sql", "database", "postman", "workflow", "automation", "schema", "webhook", "cron"], component: lazy(() => import("./data/DataPage")) },
   { id: "academy", path: "/academy", labelKey: "nav.academy", icon: I.IconAcademy, group: "create", phase: 1, keywords: ["course", "learn", "tutorial", "video", "lessons", "training", "kurs", "dars", "курс", "уроки"], component: lazy(() => import("./academy/AcademyPage")) },
   { id: "lab", path: "/lab", labelKey: "nav.lab", icon: I.IconLab, group: "create", phase: 1, keywords: ["forge", "learning", "brain", "knowledge", "ai", "training", "experiments"], component: lazy(() => import("./lab/LabPage")) },
-  {
-    id: "motion", path: "/motion", labelKey: "nav.motion", icon: I.IconMotion, group: "create", phase: 4, component: Planned,
-    plannedFeatures: ["UI micro-interaction presets (hover, press, scroll, page transitions)", "After-Effects-style timeline with easing curve editor", "Lottie and animated SVG import / edit / export", "MP4, WebM and GIF rendering of animations and 3D scenes"],
-  },
-  {
-    id: "media", path: "/media", labelKey: "nav.media", icon: I.IconMedia, group: "create", phase: 4, component: Planned,
-    plannedFeatures: ["Image editor with crop, filters, background removal and AI images", "SVG / vector editor", "Brand kit: logos, palettes, fonts and spacing tokens across projects", "Icon & font manager", "Asset manager with WebP/AVIF optimisation and CDN links"],
-  },
+  { id: "motion", path: "/motion", labelKey: "nav.motion", icon: I.IconMotion, group: "create", phase: 1, keywords: ["animation", "keyframes", "easing", "bezier", "lottie", "gif", "webm", "hover", "scroll"], component: lazy(() => import("./motion/MotionPage")) },
+  { id: "media", path: "/media", labelKey: "nav.media", icon: I.IconMedia, group: "create", phase: 1, keywords: ["image", "photo", "crop", "svg", "vector", "brand", "logo", "icons", "fonts", "assets", "webp"], component: lazy(() => import("./media/MediaPage")) },
   { id: "vault", path: "/vault", labelKey: "nav.vault", icon: I.IconVault, group: "ship", phase: 1, keywords: ["secrets", "keys", "tokens", "env"], component: lazy(() => import("./vault/VaultPage")) },
   { id: "deploy", path: "/deploy", labelKey: "nav.deploy", icon: I.IconDeploy, group: "ship", phase: 1, keywords: ["vercel", "netlify", "github", "s3", "ssh", "publish", "hosting", "release", "rollback"], component: lazy(() => import("./deploy/DeployPage")) },
   { id: "monitoring", path: "/monitoring", labelKey: "nav.monitoring", icon: I.IconMonitor, group: "ship", phase: 1, keywords: ["uptime", "analytics", "status", "errors", "vitals", "alerts", "telegram", "slack"], component: lazy(() => import("./monitoring/MonitoringPage")) },

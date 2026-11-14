@@ -4,7 +4,7 @@ import { can } from "@mfc/core";
 import { api } from "../../lib/api";
 import { ws, useSession } from "../../lib/session";
 import { useT } from "../../lib/i18n";
-import { toast } from "../../lib/ui";
+import { toast, copyText } from "../../lib/ui";
 import { ask, confirmDialog } from "../../ui/dialog";
 import { vaultApi, type SecretMeta } from "../vault/vaultApi";
 import { BarList, HealthBadge, LineChart, Sparkline, UptimeBars, VITAL_THRESHOLDS, formatVital, vitalHealth, type Health } from "../../ui/charts";
@@ -183,7 +183,7 @@ function Analytics({ t, manage }: { t: (k: string, v?: Record<string, string | n
       {cur && (
         <div className="card col" style={{ gap: 6 }}>
           <span className="small muted">{t("mon.snippetHint")}</span>
-          <div className="code-snippet"><pre className="code-view small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{snippet}</pre><button className="btn btn-sm" onClick={() => void navigator.clipboard.writeText(snippet).then(() => toast(t("common.copied"), "success"))}><I.IconCopy size={13} /></button></div>
+          <div className="code-snippet"><pre className="code-view small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{snippet}</pre><button className="btn btn-sm" onClick={() => void copyText(snippet, t("common.copied"))}><I.IconCopy size={13} /></button></div>
           <span className="hint">{t("mon.privacy")}</span>
         </div>
       )}

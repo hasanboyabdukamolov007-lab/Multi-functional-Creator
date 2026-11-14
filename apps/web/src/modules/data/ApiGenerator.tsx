@@ -5,7 +5,7 @@ import { zip } from "../builder/projectExport";
 import { createAutosave, projectsApi, type ProjectSummary } from "../../lib/projects";
 import { ApiError } from "../../lib/api";
 import { downloadBlob, slugify } from "../../lib/download";
-import { toast } from "../../lib/ui";
+import { toast, copyText } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
 import { trackUnsaved } from "../../lib/guards";
@@ -181,7 +181,7 @@ function Editor({ projectId }: { projectId: string }) {
             <>
               <div className="row small muted mono" style={{ padding: "8px 12px", borderBottom: "1px solid var(--mfc-border)" }}>
                 <span className="grow">{current}</span>
-                <button className="btn btn-sm btn-ghost" onClick={() => void navigator.clipboard.writeText(files[current]).then(() => toast(t("common.copied"), "success"))}><I.IconCopy size={13} /></button>
+                <button className="btn btn-sm btn-ghost" onClick={() => void copyText(files[current], t("common.copied"))}><I.IconCopy size={13} /></button>
               </div>
               <pre className="code-view" style={{ margin: 0, border: 0, borderRadius: 0, flex: 1 }}>{files[current]}</pre>
             </>

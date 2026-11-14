@@ -24,6 +24,7 @@ import { publicRoutes } from "./routes/public.js";
 import { forgeRoutes } from "./routes/forge.js";
 import { deployRoutes } from "./routes/deploy.js";
 import { monitoringRoutes } from "./routes/monitoring.js";
+import { assetPublicRoutes, assetRoutes, brandRoutes } from "./routes/assets.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -137,6 +138,9 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(forgeRoutes, { prefix: "/api/w/:workspaceId/forge" });
   await app.register(deployRoutes, { prefix: "/api/w/:workspaceId/deploy" });
   await app.register(monitoringRoutes, { prefix: "/api/w/:workspaceId/monitoring" });
+  await app.register(assetRoutes, { prefix: "/api/w/:workspaceId/assets" });
+  await app.register(brandRoutes, { prefix: "/api/w/:workspaceId/brand" });
+  await app.register(assetPublicRoutes, { prefix: "/api" });
   await app.register(publicRoutes, { prefix: "/api" });
 
   if (config.scheduler) {

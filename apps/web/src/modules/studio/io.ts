@@ -22,7 +22,7 @@ export function loadAsset(id: string, asset: Asset): Promise<THREE.Object3D> {
   let p = cache.get(id);
   if (!p) {
     p = (async () => {
-      const buf = await bufferOf(asset.dataUrl);
+      const buf = await bufferOf(asset.url ?? asset.dataUrl ?? "");
       switch (asset.format) {
         case "gltf":
         case "glb": {
@@ -72,7 +72,15 @@ export async function readModelFile(file: File): Promise<Asset> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   const format = FORMATS[ext];
   if (!format) throw new Error(`Unsupported format .${ext} — use GLB, GLTF (embedded), OBJ, FBX or STL`);
-  if (file.size > MAX_MODEL_BYTES) throw new Error(`Model is ${(file.size / 1048576).toFixed(1)} MB; the limit is 15 MB until the asset manager ships`);
+  if (file.size > MAX_MODEL_BYTES) throw new Error(`Model is ${(file.size / 1048576).toFixed(1)} MB; the limit is 15 MB`);
+  // Prefer the asset store: the scene only keeps a URL, so saving stays fast (and fits serverless body limits).
+  try {
+    const { uploadFile } = await import("../media/mediaApi");
+    const r = await uploadFile(file, { optimize: false, tags: ["3d"] });
+    return { name: file.name.replace(/\.[^.]+$/, ""), format, url: r.url };
+  } catch {
+    /* offline or no permission: embed instead */
+  }
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));

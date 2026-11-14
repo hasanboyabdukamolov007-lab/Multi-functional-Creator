@@ -302,4 +302,30 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 CREATE INDEX IF NOT EXISTS analytics_events_site_ts ON analytics_events (site_id, ts DESC);
 CREATE INDEX IF NOT EXISTS analytics_events_type ON analytics_events (site_id, type, ts DESC)`,
   },
+  {
+    id: 7,
+    name: "assets-brand",
+    sql: `CREATE TABLE IF NOT EXISTS assets (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  mime text NOT NULL,
+  size int NOT NULL,
+  sha256 text NOT NULL,
+  data bytea NOT NULL,
+  width int,
+  height int,
+  folder text NOT NULL DEFAULT '',
+  tags text[] NOT NULL DEFAULT '{}',
+  created_by uuid REFERENCES users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS assets_ws ON assets (workspace_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS assets_dedupe ON assets (workspace_id, sha256);
+CREATE TABLE IF NOT EXISTS brand_kits (
+  workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  data jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  },
 ];

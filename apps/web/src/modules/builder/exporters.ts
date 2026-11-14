@@ -2,6 +2,8 @@ import type { BNode, BPage, BuilderDoc } from "./model";
 import { specFor } from "./catalog";
 import { isSlot, type Child, type Spec } from "./spec";
 import { SITE_CSS, tokenVars } from "./siteCss";
+import { MOTION_CSS, MOTION_JS, usesEntrance } from "./motion";
+import { googleFontsHref } from "../../lib/fonts";
 
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -18,7 +20,8 @@ function styleString(style: Record<string, unknown> | undefined): string {
 
 /** Merge the node's own style overrides onto the root element of its spec. */
 export function specWithNode(node: BNode): Spec {
-  const spec = specFor(node);
+  let spec = specFor(node);
+  if (typeof node.props._motion === "string" && node.props._motion) spec = { ...spec, attrs: { ...(spec.attrs ?? {}), "data-motion": node.props._motion } };
   return Object.keys(node.style).length ? { ...spec, style: { ...(spec.style ?? {}), ...node.style } } : spec;
 }
 
@@ -61,6 +64,8 @@ export function pageHtml(doc: BuilderDoc, page: BPage, opts: { cssHref?: string 
     `<meta name="twitter:card" content="${page.ogImage ? "summary_large_image" : "summary"}" />`,
     `<meta name="theme-color" content="${escAttr(doc.tokens.primary)}" />`,
   ].filter(Boolean).join("\n");
+  const fontsHref = googleFontsHref(doc.tokens.font, doc.tokens.headingFont);
+  const body = nodeHtml(page.root, 0);
   return `<!doctype html>
 <html lang="${escAttr(page.lang || "en")}">
 <head>
@@ -68,16 +73,17 @@ export function pageHtml(doc: BuilderDoc, page: BPage, opts: { cssHref?: string 
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${title}</title>
 ${meta}
-${opts.cssHref ? `<link rel="stylesheet" href="${escAttr(opts.cssHref)}" />` : `<style>
+${fontsHref ? `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n<link rel="stylesheet" href="${escAttr(fontsHref)}" />\n` : ""}${opts.cssHref ? `<link rel="stylesheet" href="${escAttr(opts.cssHref)}" />` : `<style>
 .site {
 ${vars}
 }
 html, body { margin: 0; }
 ${SITE_CSS.trim()}
+${MOTION_CSS.trim()}
 </style>`}
 </head>
 <body class="site">
-${nodeHtml(page.root, 0)}
+${body}${usesEntrance(body) ? `\n<script>${MOTION_JS}</script>` : ""}
 </body>
 </html>
 `;
@@ -85,7 +91,7 @@ ${nodeHtml(page.root, 0)}
 
 export function siteCss(doc: BuilderDoc): string {
   const vars = Object.entries(tokenVars(doc.tokens)).map(([k, v]) => `  ${k}: ${v};`).join("\n");
-  return `.site {\n${vars}\n}\nhtml, body { margin: 0; }\n${SITE_CSS.trim()}\n`;
+  return `.site {\n${vars}\n}\nhtml, body { margin: 0; }\n${SITE_CSS.trim()}\n${MOTION_CSS.trim()}\n`;
 }
 
 // ------------------------------------------------------------------- React (JSX)

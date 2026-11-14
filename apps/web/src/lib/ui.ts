@@ -56,3 +56,32 @@ export const useUi = create<UiState>((set, get) => ({
 }));
 
 export const toast = (text: string, kind?: Toast["kind"]) => useUi.getState().toast(text, kind);
+
+/** Copy text to the clipboard; never throws (some browsers deny clipboard access). */
+export async function copyText(text: string, okMessage?: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (okMessage) toast(okMessage, "success");
+    return true;
+  } catch {
+    // Fallback for denied permissions / insecure contexts.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      if (ok) {
+        if (okMessage) toast(okMessage, "success");
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    toast("Couldn't access the clipboard — select the text and copy it manually.", "warning");
+    return false;
+  }
+}

@@ -14,6 +14,7 @@ import { runFunction } from "../../lib/registry";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { LIBRARY } from "./library";
 import { useCompact } from "../../lib/media";
 import { MobileTabs } from "../../ui/MobileTabs";
 
@@ -33,6 +34,7 @@ function Toolbar() {
         <optgroup label="Primitives">{PRIMITIVES.map((p) => <option key={p} value={`studio.add.${p}`}>{p}</option>)}</optgroup>
         <optgroup label="Extruded shapes">{SHAPES.map((p) => <option key={p} value={`studio.add.shape-${p}`}>{p}</option>)}</optgroup>
         <optgroup label="Lights">{LIGHT_TYPES.map((p) => <option key={p} value={`studio.add.light-${p}`}>{p} light</option>)}</optgroup>
+        <optgroup label="Model library">{Object.entries(LIBRARY).map(([id, d]) => <option key={id} value={`studio.library.${id}`}>{d.name}</option>)}</optgroup>
         <optgroup label="Other"><option value="studio.add.camera">camera</option><option value="studio.add.group">group</option><option value="studio.import">Import model…</option></optgroup>
       </select>
       <div className="toolbar-sep" />
@@ -45,6 +47,11 @@ function Toolbar() {
       <button className={`btn btn-sm ${s.space === "local" ? "btn-primary" : ""}`} onClick={s.toggleSpace} title="Gizmo space">{s.space}</button>
       <button className={`btn btn-sm ${s.snap ? "btn-primary" : ""}`} onClick={s.toggleSnap} title="Snap">snap</button>
       <div className="toolbar-sep" />
+      <select className="select input-sm" style={{ width: 100 }} value="" aria-label="Record" onChange={(e) => e.target.value && run(e.target.value)}>
+        <option value="">⏺ Record…</option>
+        <option value="studio.record.webm">WebM video</option>
+        <option value="studio.record.gif">GIF</option>
+      </select>
       <button className="btn btn-sm btn-ghost" onClick={() => run("studio.view.front")}>Front</button>
       <button className="btn btn-sm btn-ghost" onClick={() => run("studio.view.top")}>Top</button>
       <button className="btn btn-sm btn-ghost" onClick={() => run("studio.view.right")}>Right</button>

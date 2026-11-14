@@ -1,10 +1,11 @@
 import { registry, type AppFunction } from "../../lib/registry";
-import { downloadText, pickFile, slugify } from "../../lib/download";
+import { downloadBlob, downloadText, pickFile, slugify } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { projectsApi } from "../../lib/projects";
 import { useStudio } from "./store";
 import { exportScene, readModelFile, snapshotPng } from "./io";
 import { SCENE_PRESETS } from "./presets";
+import { LIBRARY, buildModel } from "./library";
 import { ENVIRONMENTS, EASINGS, LIGHT_TYPES, MATERIAL_PRESETS, PRIMITIVES, SHAPES, SWATCHES, makeCamera, makeExtrude, makeGroup, makeLight, makePrimitive, type SceneObject, type Vec3 } from "./model";
 
 const S = () => useStudio.getState();
@@ -56,6 +57,35 @@ export function registerStudioFunctions() {
       },
     },
   );
+
+  // 3D asset library (parametric, fully editable parts)
+  for (const [id, def] of Object.entries(LIBRARY)) {
+    fns.push({ id: `studio.library.${id}`, title: `Add model: ${def.name}`, category: "3D · Library", keywords: ["model", "asset", "library", id, def.name.toLowerCase()], when: hasScene, run: () => { const objs = buildModel(id, [(Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2]); S().addMany(objs); S().select(objs[0].id); return objs[0].id; } });
+  }
+  // Recording
+  for (const format of ["webm", "gif"] as const) {
+    fns.push({
+      id: `studio.record.${format}`,
+      title: `Record the viewport as ${format.toUpperCase()} (plays the timeline)`,
+      category: "3D · Export",
+      keywords: ["video", "record", "gif", "webm", "render", "animation"],
+      ai: false,
+      when: hasScene,
+      run: async () => {
+        const canvas = document.querySelector<HTMLCanvasElement>(".studio-viewport canvas");
+        if (!canvas) throw new Error("Open the 3D viewport first");
+        const { recordCanvas } = await import("../../lib/recorder");
+        const seconds = Math.min(20, S().doc.settings.duration || 5);
+        S().setTime(0);
+        S().setPlaying(true);
+        toast(`Recording ${seconds}s…`, "info");
+        const blob = await recordCanvas(canvas, { seconds, format, fps: format === "gif" ? 15 : 30, maxSize: 540 });
+        S().setPlaying(false);
+        downloadBlob(`${slugify(S().projectName) || "scene"}.${format}`, blob);
+        toast(`Saved ${format.toUpperCase()} (${Math.round(blob.size / 1024)} KB)`, "success");
+      },
+    });
+  }
 
   // Lighting rigs
   fns.push(

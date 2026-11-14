@@ -87,7 +87,10 @@ export interface SceneSettings {
 export interface Asset {
   name: string;
   format: "gltf" | "glb" | "obj" | "fbx" | "stl";
-  dataUrl: string;
+  /** Embedded copy (older scenes, or offline imports). */
+  dataUrl?: string;
+  /** Asset-store URL (preferred: keeps scene documents small). */
+  url?: string;
 }
 
 export interface SceneDoc {

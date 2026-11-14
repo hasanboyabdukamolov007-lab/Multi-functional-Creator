@@ -3,6 +3,7 @@ import { CATALOG_MAP, defFor, type PropField } from "./catalog";
 import { pathTo } from "./model";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { MOTION_PRESETS } from "./motion";
 
 const STYLE_FIELDS: Array<{ key: string; label: string; placeholder?: string; options?: string[] }> = [
   { key: "width", label: "Width", placeholder: "auto, 100%, 320px" },
@@ -95,6 +96,20 @@ export function Inspector() {
               </div>
             ))}
           </div>
+        </>
+      )}
+
+      {node.type !== "page" && (
+        <>
+          <div className="section-label">{t("builder.motion")}</div>
+          <select className="select input-sm" value={String(node.props._motion ?? "")} onChange={(e) => st.update(node.id, { props: { _motion: e.target.value || undefined } })} aria-label={t("builder.motion")}>
+            <option value="">— {t("builder.noMotion")} —</option>
+            {(["hover", "press", "enter", "loop"] as const).map((g) => (
+              <optgroup key={g} label={t(`builder.motion.${g}`)}>
+                {MOTION_PRESETS.filter((m) => m.group === g).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </optgroup>
+            ))}
+          </select>
         </>
       )}
 

@@ -4,6 +4,7 @@ import { defFor } from "./catalog";
 import { reactAttrName, specWithNode } from "./exporters";
 import { isSlot, type Spec } from "./spec";
 import { SITE_CSS, tokenVars } from "./siteCss";
+import { MOTION_CSS } from "./motion";
 import { findNode, type BNode } from "./model";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
@@ -159,6 +160,7 @@ export function Canvas() {
   return (
     <div className="canvas-scroll" onDragLeave={(e) => e.currentTarget === e.target && setHint(null)}>
       <style>{SITE_CSS}</style>
+      <style>{MOTION_CSS}</style>
       <style>{`
         .canvas-frame .mfc-node { cursor: default; }
         .canvas-frame .mfc-node:hover { outline: 1px solid color-mix(in srgb, var(--mfc-accent) 60%, transparent); outline-offset: -1px; }

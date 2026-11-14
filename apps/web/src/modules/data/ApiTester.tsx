@@ -3,7 +3,7 @@ import { ENVIRONMENTS, type Environment } from "@mfc/core";
 import { httpApi, toTable, curlFor, fetchFor, type HttpReq, type HttpRes, type SavedRequest } from "./dataApi";
 import { useBuilder } from "../builder/store";
 import { n } from "../builder/model";
-import { toast } from "../../lib/ui";
+import { toast, copyText } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import { ApiError } from "../../lib/api";
 import { load, save as store } from "../../lib/storage";
@@ -169,7 +169,7 @@ export default function ApiTester() {
                 <button className={`tab ${resTab === "body" ? "active" : ""}`} onClick={() => setResTab("body")}>{t("data.tab.body")}</button>
                 <button className={`tab ${resTab === "headers" ? "active" : ""}`} onClick={() => setResTab("headers")}>{t("data.tab.headers")}</button>
               </div>
-              <button className="btn btn-sm" onClick={() => void navigator.clipboard.writeText(res.body).then(() => toast(t("common.copied"), "success"))}><I.IconCopy size={13} /></button>
+              <button className="btn btn-sm" onClick={() => void copyText(res.body, t("common.copied"))}><I.IconCopy size={13} /></button>
               {table && <button className="btn btn-sm" disabled={!builderOpen} title={builderOpen ? "" : t("builder.openProject")} onClick={insertTable}><I.IconBuilder size={13} /> {t("data.insertTable")}</button>}
             </div>
             {resTab === "body" ? (
