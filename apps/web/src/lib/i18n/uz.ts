@@ -336,4 +336,10 @@ export const uz: Partial<Dict> = {
   "data.wf.end": "tugash",
   "data.wf.refs": "Har qanday maydonda {{ trigger.body.x }}, {{ steps.<name>.body }}, {{ vars.x }}, {{ now }} va {{ secrets.NAME }} ishlating.",
   "builder.exportProject": "Loyihani eksport…",
+  "builder.canvas": "Kanvas",
+  "pwa.install": "Ilovani o‘rnatish",
+  "pwa.update": "Yangi versiya tayyor.",
+  "pwa.reload": "Qayta yuklash",
+  "pwa.already": "Ilova bu qurilmada allaqachon o‘rnatilgan.",
+  "pwa.manual": "Brauzer menyusidan → “Ilovani o‘rnatish” / “Bosh ekranga qo‘shish”ni tanlang.",
 };

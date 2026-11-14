@@ -214,3 +214,68 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
   .data-split { flex-direction: column; }
   .data-side { width: auto; max-height: 34vh; border-right: 0; border-bottom: 1px solid var(--mfc-border); }
 }
+
+/* ---------- Every device: phones, tablets, laptops, desktops ---------- */
+.mobile-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mobile-panes { flex: 1; min-height: 0; position: relative; }
+.mobile-pane { position: absolute; inset: 0; overflow: auto; display: flex; flex-direction: column; }
+.mobile-pane > * { flex: 1; min-height: 0; }
+.mobile-pane[hidden] { display: none; }
+.mobile-tabbar { display: flex; border-top: 1px solid var(--mfc-border); background: var(--mfc-surface); padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; }
+.mobile-tabbar button { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; border: 0; background: none; color: var(--mfc-muted); font-size: 11px; cursor: pointer; min-height: 52px; }
+.mobile-tabbar button.active { color: var(--mfc-accent); }
+.mobile-tabbar button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mobile-badge { position: absolute; top: 4px; right: calc(50% - 18px); min-width: 8px; height: 8px; border-radius: 99px; background: var(--mfc-accent); color: transparent; font-size: 0; }
+.drawer-backdrop { position: fixed; inset: 52px 0 0 0; background: rgb(0 0 0 / .4); z-index: 19; animation: mfc-fade .12s ease; }
+.drawer-backdrop.transparent { background: transparent; z-index: 4; inset: 0; }
+.shell { height: 100dvh; }
+.topbar { padding-left: max(calc(var(--sp) * 3), env(safe-area-inset-left)); padding-right: max(calc(var(--sp) * 3), env(safe-area-inset-right)); }
+@media (max-width: 900px) {
+  .hide-sm { display: none !important; }
+  .copilot-dock { inset: 52px 0 0 0; width: 100vw; padding-bottom: env(safe-area-inset-bottom); }
+  .toolbar { gap: 2px; scrollbar-width: none; }
+  .toolbar::-webkit-scrollbar { display: none; }
+  .page-header { align-items: flex-start; }
+  .page-title { font-size: 20px; }
+  .tabs { scrollbar-width: none; }
+  .overlay { padding-top: 6vh; }
+  .modal { max-height: 88dvh; }
+  .grid-auto { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+  .schema-canvas, .wf-node, .schema-head { touch-action: none; }
+}
+@media (max-width: 520px) {
+  .hide-xs { display: none !important; }
+  .page { padding: calc(var(--sp) * 3); }
+  .brand { gap: 6px; }
+}
+/* Fingers need bigger targets than mouse pointers (WCAG 2.5.8). */
+@media (pointer: coarse) {
+  .icon-btn { width: 38px; height: 38px; }
+  .btn { min-height: 38px; }
+  .btn-sm { min-height: 32px; }
+  .list-item { padding: 9px 10px; }
+  .nav-item { padding: 11px 12px; }
+  .input, .select { height: 40px; }
+  .resize-handle { width: 10px !important; }
+  .resize-handle-h { height: 10px !important; width: auto !important; }
+}
+/* iOS zooms into inputs smaller than 16px: keep text inputs at 16px on touch screens. */
+@media (pointer: coarse) and (max-width: 900px) {
+  .input, .select, .textarea, input, select, textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+@media print {
+  .topbar, .sidebar, .copilot-dock, .toasts { display: none !important; }
+  .shell { display: block; height: auto; }
+}
+.update-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--mfc-accent-soft); border-bottom: 1px solid var(--mfc-border); font-size: 13px; }
+.topbar { position: relative; z-index: 40; }
+@media (max-width: 900px) {
+  .req-bar .req-url { order: -1; flex: 1 1 100%; }
+  .data-side { max-height: 30vh; }
+}
+/* Toolbars scroll sideways on small screens instead of squashing their controls. */
+.toolbar > * { flex-shrink: 0; }
+.toolbar > .grow { flex-shrink: 1; min-width: 0; }

@@ -30,6 +30,7 @@ export function registerCoreFunctions() {
     { id: "ui.sidebar.toggle", title: "Toggle sidebar", category: "Panel", shortcut: "mod+b", run: () => useUi.getState().toggleSidebar() },
     { id: "ui.shortcuts", title: "Keyboard shortcuts", category: "Panel", shortcut: "shift+?", keywords: ["help", "keys", "hotkeys"], ai: false, run: async () => (await import("../shell/ShortcutsHelp")).useShortcutsHelp.getState().set(true) },
     { id: "ui.onboarding", title: "Show the welcome tour", category: "Panel", keywords: ["help", "tour", "onboarding"], ai: false, run: () => useUi.getState().setOnboarding(true) },
+    { id: "app.install", title: "Install the app on this device", category: "Panel", keywords: ["pwa", "install", "android", "ios", "desktop", "offline", "home screen"], ai: false, run: async () => { const { usePwa } = await import("./pwa"); if (usePwa.getState().installed) return toast(t("pwa.already"), "info"); if (!(await usePwa.getState().install())) toast(t("pwa.manual"), "info"); } },
     { id: "ui.fullscreen", title: "Toggle full screen", category: "Panel", ai: false, run: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()) },
   );
 

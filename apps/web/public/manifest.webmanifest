@@ -1,0 +1,26 @@
+{
+  "name": "Multi-functional Creator",
+  "short_name": "Creator",
+  "description": "Build panels, sites, apps, APIs and 3D — with Forge, a built-in copilot.",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0d12",
+  "theme_color": "#12151c",
+  "categories": ["developer", "productivity", "design"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Builder", "url": "/builder", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "3D Studio", "url": "/studio", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Secrets Vault", "url": "/vault", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Academy", "url": "/academy", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

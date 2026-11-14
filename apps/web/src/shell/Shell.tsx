@@ -13,6 +13,8 @@ import { Onboarding } from "./Onboarding";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ShortcutsHelp } from "./ShortcutsHelp";
 import * as I from "../ui/icons";
+import { useCompact } from "../lib/media";
+import { usePwa } from "../lib/pwa";
 
 const CopilotPanel = lazy(() => import("../modules/copilot/CopilotPanel"));
 
@@ -56,6 +58,8 @@ export function Shell() {
   const theme = useTheme((s) => s.active());
   const { locale, setLocale } = useI18n();
   const [menu, setMenu] = useState(false);
+  const compact = useCompact();
+  const pwa = usePwa();
 
   useEffect(() => setNavigate((p) => navigate(p)), [navigate]);
   useEffect(() => setModule(moduleForPath(location.pathname).id), [location.pathname, setModule]);
@@ -83,7 +87,7 @@ export function Shell() {
           <span className="brand-mark">M</span>
           <span className="hide-sm">{t("app.name")}</span>
         </div>
-        <select className="select input-sm" style={{ width: 200, marginLeft: 8 }} value={workspaceId ?? ""} aria-label={t("shell.workspace")}
+        <select className="select input-sm hide-sm" style={{ width: 200, marginLeft: 8 }} value={workspaceId ?? ""} aria-label={t("shell.workspace")}
           onChange={(e) => (e.target.value === "__new" ? void newWorkspace() : setWorkspace(e.target.value))}>
           {workspaces.map((w) => (
             <option key={w.id} value={w.id}>
@@ -93,14 +97,20 @@ export function Shell() {
           <option value="__new">+ {t("shell.newWorkspace")}</option>
         </select>
         <div className="grow" />
-        <button className="btn" style={{ minWidth: 240, justifyContent: "space-between", color: "var(--mfc-muted)" }} onClick={() => setPalette(true)}>
-          <span className="row" style={{ gap: 8 }}>
-            <I.IconSearch size={15} /> {t("shell.palette")}
-          </span>
-          <kbd>{prettyShortcut("mod+k")}</kbd>
-        </button>
-        <div className="grow" />
-        <select className="select input-sm" style={{ width: 120 }} value={locale} aria-label="Language" onChange={(e) => setLocale(e.target.value as Locale)}>
+        {compact ? (
+          <button className="icon-btn" onClick={() => setPalette(true)} aria-label={t("shell.palette")}>
+            <I.IconSearch size={18} />
+          </button>
+        ) : (
+          <button className="btn" style={{ minWidth: 240, justifyContent: "space-between", color: "var(--mfc-muted)" }} onClick={() => setPalette(true)}>
+            <span className="row" style={{ gap: 8 }}>
+              <I.IconSearch size={15} /> {t("shell.palette")}
+            </span>
+            <kbd>{prettyShortcut("mod+k")}</kbd>
+          </button>
+        )}
+        <div className="grow hide-sm" />
+        <select className="select input-sm hide-sm" style={{ width: 120 }} value={locale} aria-label="Language" onChange={(e) => setLocale(e.target.value as Locale)}>
           {LOCALES.map((l) => (
             <option key={l.id} value={l.id}>
               {l.native}
@@ -111,7 +121,7 @@ export function Shell() {
           {theme.tokens.scheme === "dark" ? <I.IconMoon size={17} /> : <I.IconSun size={17} />}
         </button>
         <button className={`btn ${copilotOpen ? "btn-primary" : ""}`} onClick={() => setCopilot(!copilotOpen)} title={`${t("shell.toggleCopilot")} (${prettyShortcut("mod+j")})`}>
-          <I.IconSparkles size={15} /> Forge
+          <I.IconSparkles size={15} /> <span className="hide-xs">Forge</span>
         </button>
         <div style={{ position: "relative" }}>
           <button className="icon-btn" onClick={() => setMenu(!menu)} aria-label="Account" title={user?.email}>
@@ -120,10 +130,28 @@ export function Shell() {
             </span>
           </button>
           {menu && (
-            <div className="modal" style={{ position: "absolute", right: 0, top: 38, width: 240, padding: 8, zIndex: 50 }} onMouseLeave={() => setMenu(false)}>
+            <div className="modal" style={{ position: "absolute", right: 0, top: 38, width: 260, padding: 8, zIndex: 50 }} onMouseLeave={compact ? undefined : () => setMenu(false)}>
               <div className="small muted ellipsis" style={{ padding: "6px 8px" }}>
                 {user?.email}
               </div>
+              {compact && (
+                <div className="col" style={{ gap: 6, padding: "4px 8px 8px" }}>
+                  <select className="select input-sm" value={workspaceId ?? ""} aria-label={t("shell.workspace")} onChange={(e) => (e.target.value === "__new" ? void newWorkspace() : setWorkspace(e.target.value))}>
+                    {workspaces.map((w) => (
+                      <option key={w.id} value={w.id}>{w.name} · {w.role}</option>
+                    ))}
+                    <option value="__new">+ {t("shell.newWorkspace")}</option>
+                  </select>
+                  <select className="select input-sm" value={locale} aria-label="Language" onChange={(e) => setLocale(e.target.value as Locale)}>
+                    {LOCALES.map((l) => <option key={l.id} value={l.id}>{l.native}</option>)}
+                  </select>
+                </div>
+              )}
+              {pwa.installable && (
+                <button className="nav-item" onClick={() => (setMenu(false), void pwa.install())}>
+                  <I.IconDownload size={16} /> {t("pwa.install")}
+                </button>
+              )}
               <button className="nav-item" onClick={() => (setMenu(false), navigate("/settings"))}>
                 <I.IconSettings size={16} /> {t("nav.settings")}
               </button>
@@ -135,6 +163,8 @@ export function Shell() {
         </div>
       </header>
 
+      {compact && !sidebarCollapsed && <div className="drawer-backdrop" onClick={toggleSidebar} aria-hidden="true" />}
+      {compact && menu && <div className="drawer-backdrop transparent" onClick={() => setMenu(false)} aria-hidden="true" />}
       <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Modules">
         {GROUPS.map(([g, key]) => (
           <div key={g}>
@@ -155,6 +185,12 @@ export function Shell() {
       </nav>
 
       <main className="main">
+        {pwa.updateReady && (
+          <div className="update-bar" role="status">
+            <I.IconSparkles size={15} /> <span className="grow">{t("pwa.update")}</span>
+            <button className="btn btn-sm btn-primary" onClick={pwa.applyUpdate}>{t("pwa.reload")}</button>
+          </div>
+        )}
         <ErrorBoundary resetKey={location.pathname}>
           <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}>
             <Outlet />

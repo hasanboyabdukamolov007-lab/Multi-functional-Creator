@@ -74,6 +74,8 @@ writeFileSync(
       version: 3,
       routes: [
         { src: "^/assets/(.*)$", headers: { "cache-control": "public, max-age=31536000, immutable" }, continue: true },
+        { src: "^/sw\\.js$", headers: { "cache-control": "no-cache", "service-worker-allowed": "/" }, continue: true },
+        { src: "^/manifest\\.webmanifest$", headers: { "content-type": "application/manifest+json" }, continue: true },
         { src: "^/api(/.*)?$", dest: "/api" },
         { handle: "filesystem" },
         { src: "^/assets/.*$", status: 404 },

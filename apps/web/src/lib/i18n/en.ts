@@ -335,6 +335,12 @@ export const en = {
   "data.wf.end": "end",
   "data.wf.refs": "Use {{ trigger.body.x }}, {{ steps.<name>.body }}, {{ vars.x }}, {{ now }} and {{ secrets.NAME }} in any field.",
   "builder.exportProject": "Export project…",
+  "builder.canvas": "Canvas",
+  "pwa.install": "Install app",
+  "pwa.update": "A new version is ready.",
+  "pwa.reload": "Reload",
+  "pwa.already": "The app is already installed on this device.",
+  "pwa.manual": "Use your browser's menu → “Install app” / “Add to Home screen”.",
 };
 
 export type Dict = typeof en;

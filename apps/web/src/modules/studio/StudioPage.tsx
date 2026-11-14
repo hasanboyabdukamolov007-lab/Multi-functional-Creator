@@ -14,6 +14,8 @@ import { runFunction } from "../../lib/registry";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { useCompact } from "../../lib/media";
+import { MobileTabs } from "../../ui/MobileTabs";
 
 const run = (id: string) => runFunction(id).catch((e: Error) => toast(e.message, "error"));
 
@@ -106,6 +108,7 @@ export default function StudioPage() {
   const projectParam = params.get("project");
   const projectId = useStudio((s) => s.projectId);
   const loading = useStudio((s) => s.loading);
+  const compact = useCompact();
 
   useEffect(() => {
     if (projectParam && projectParam !== useStudio.getState().projectId) useStudio.getState().open(projectParam).catch((e: Error) => toast(e.message, "error"));
@@ -114,6 +117,22 @@ export default function StudioPage() {
 
   if (!projectParam) return <ProjectPicker />;
   if (loading || projectId !== projectParam) return <div className="page muted">{t("common.loading")}</div>;
+
+  if (compact)
+    return (
+      <div className="col" style={{ height: "100%", gap: 0 }}>
+        <Toolbar />
+        <MobileTabs
+          initial="view"
+          panes={[
+            { id: "outliner", label: t("studio.outliner"), icon: I.IconLayers, content: <div className="panel"><div className="panel-body"><Outliner /></div></div> },
+            { id: "view", label: "3D", icon: I.IconStudio, content: <div style={{ position: "relative", height: "100%" }}><Viewport /></div> },
+            { id: "timeline", label: t("studio.timeline"), icon: I.IconClock, content: <Timeline /> },
+            { id: "props", label: t("studio.properties"), icon: I.IconSettings, content: <div className="panel"><div className="panel-body"><Properties /></div></div> },
+          ]}
+        />
+      </div>
+    );
 
   return (
     <div className="col" style={{ height: "100%", gap: 0 }}>

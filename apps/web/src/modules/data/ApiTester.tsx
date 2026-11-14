@@ -110,11 +110,11 @@ export default function ApiTester() {
         </div>
       </aside>
       <section className="col grow" style={{ gap: 12, padding: 16, minWidth: 0, overflow: "auto" }}>
-        <div className="row" style={{ gap: 6 }}>
+        <div className="row wrap req-bar" style={{ gap: 6 }}>
           <select className="select" style={{ width: 110 }} value={req.method} onChange={(e) => setReq({ ...req, method: e.target.value })} aria-label="Method">
             {METHODS.map((m) => <option key={m}>{m}</option>)}
           </select>
-          <input className="input mono grow" value={req.url} onChange={(e) => setReq({ ...req, url: e.target.value })} onKeyDown={(e) => e.key === "Enter" && void send()} placeholder="https://api.example.com/v1/items" aria-label="URL" />
+          <input className="input mono grow req-url" value={req.url} onChange={(e) => setReq({ ...req, url: e.target.value })} onKeyDown={(e) => e.key === "Enter" && void send()} placeholder="https://api.example.com/v1/items" aria-label="URL" />
           <select className="select" style={{ width: 140 }} value={req.environment} onChange={(e) => setReq({ ...req, environment: e.target.value as Environment })} title={t("data.secretEnv")} aria-label={t("data.secretEnv")}>
             {ENVIRONMENTS.map((e) => <option key={e} value={e}>{t(`vault.env.${e}`)}</option>)}
           </select>

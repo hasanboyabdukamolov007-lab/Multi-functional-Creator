@@ -336,4 +336,10 @@ export const ru: Partial<Dict> = {
   "data.wf.end": "конец",
   "data.wf.refs": "В любом поле можно использовать {{ trigger.body.x }}, {{ steps.<name>.body }}, {{ vars.x }}, {{ now }} и {{ secrets.NAME }}.",
   "builder.exportProject": "Экспорт проекта…",
+  "builder.canvas": "Холст",
+  "pwa.install": "Установить приложение",
+  "pwa.update": "Доступна новая версия.",
+  "pwa.reload": "Обновить",
+  "pwa.already": "Приложение уже установлено на этом устройстве.",
+  "pwa.manual": "Откройте меню браузера → «Установить приложение» / «Добавить на главный экран».",
 };

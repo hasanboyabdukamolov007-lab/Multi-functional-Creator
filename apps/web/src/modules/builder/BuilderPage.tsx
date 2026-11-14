@@ -14,10 +14,12 @@ import { runFunction } from "../../lib/registry";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { useCompact } from "../../lib/media";
+import { MobileTabs } from "../../ui/MobileTabs";
 
 const CodePanel = lazy(() => import("./CodePanel"));
 
-function ComponentsPalette() {
+function ComponentsPalette({ onInserted }: { onInserted?: () => void }) {
   const [q, setQ] = useState("");
   const items = CATALOG.filter((c) => c.type !== "page" && (`${c.label} ${c.type} ${c.description} ${c.category}`.toLowerCase().includes(q.toLowerCase())));
   return (
@@ -44,6 +46,7 @@ function ComponentsPalette() {
                   onClick={() => {
                     try {
                       useBuilder.getState().insert(c.type);
+                      onInserted?.();
                     } catch (err) {
                       toast((err as Error).message, "error");
                     }
@@ -300,6 +303,9 @@ export default function BuilderPage() {
   const codeOpen = useBuilder((s) => s.codeOpen);
   const root = useBuilder((s) => s.page().root);
   const [leftTab, setLeftTab] = useState<"components" | "layers" | "pages">("components");
+  const compact = useCompact();
+  const [pane, setPane] = useState("canvas");
+  const selectedId = useBuilder((s) => s.selectedId);
 
   useEffect(() => {
     if (projectParam && projectParam !== useBuilder.getState().projectId) {
@@ -320,27 +326,58 @@ export default function BuilderPage() {
   if (!projectParam) return <ProjectPicker />;
   if (loading || projectId !== projectParam) return <div className="page muted">{t("common.loading")}</div>;
 
+  const leftPanel = (
+    <div className="panel" style={{ borderRight: compact ? 0 : "1px solid var(--mfc-border)" }}>
+      <div className="tabs">
+        <button className={`tab ${leftTab === "components" ? "active" : ""}`} onClick={() => setLeftTab("components")}>{t("builder.components")}</button>
+        <button className={`tab ${leftTab === "layers" ? "active" : ""}`} onClick={() => setLeftTab("layers")}>{t("builder.layers")} ({layerCount})</button>
+        <button className={`tab ${leftTab === "pages" ? "active" : ""}`} onClick={() => setLeftTab("pages")}>{t("builder.pages")}</button>
+      </div>
+      <div className="panel-body">
+        {leftTab === "components" && <ComponentsPalette onInserted={compact ? () => setPane("canvas") : undefined} />}
+        {leftTab === "layers" && (
+          <div style={{ padding: 6 }} onClick={compact ? (e) => (e.target as HTMLElement).closest(".list-item") && setPane("inspector") : undefined}>
+            <LayerRow node={root} depth={0} />
+          </div>
+        )}
+        {leftTab === "pages" && <PagesAndTokens />}
+      </div>
+    </div>
+  );
+  const inspector = (
+    <div className="panel" style={{ borderLeft: compact ? 0 : "1px solid var(--mfc-border)" }}>
+      <div className="panel-header">{t("builder.inspector")}</div>
+      <div className="panel-body">
+        <Inspector />
+      </div>
+    </div>
+  );
+
+  if (compact)
+    return (
+      <div className="col" style={{ height: "100%", gap: 0 }}>
+        <Toolbar />
+        <MobileTabs
+          value={pane}
+          onChange={setPane}
+          panes={[
+            { id: "add", label: t("builder.components"), icon: I.IconPlus, content: leftPanel },
+            { id: "canvas", label: t("builder.canvas"), icon: I.IconDesktop, content: <Canvas /> },
+            { id: "inspector", label: t("builder.inspector"), icon: I.IconSettings, badge: selectedId ? "•" : null, content: inspector },
+            ...(codeOpen ? [{ id: "code", label: t("builder.code"), icon: I.IconCode, content: <Suspense fallback={<div className="page muted">{t("common.loading")}</div>}><CodePanel /></Suspense> }] : []),
+          ]}
+        />
+        <A11yPanel />
+        <PageSettings />
+      </div>
+    );
+
   return (
     <div className="col" style={{ height: "100%", gap: 0 }}>
       <Toolbar />
       <PanelGroup direction="horizontal" autoSaveId="mfc.builder.h" style={{ flex: 1, minHeight: 0 }}>
         <Panel defaultSize={20} minSize={14} maxSize={35}>
-          <div className="panel" style={{ borderRight: "1px solid var(--mfc-border)" }}>
-            <div className="tabs">
-              <button className={`tab ${leftTab === "components" ? "active" : ""}`} onClick={() => setLeftTab("components")}>{t("builder.components")}</button>
-              <button className={`tab ${leftTab === "layers" ? "active" : ""}`} onClick={() => setLeftTab("layers")}>{t("builder.layers")} ({layerCount})</button>
-              <button className={`tab ${leftTab === "pages" ? "active" : ""}`} onClick={() => setLeftTab("pages")}>{t("builder.pages")}</button>
-            </div>
-            <div className="panel-body">
-              {leftTab === "components" && <ComponentsPalette />}
-              {leftTab === "layers" && (
-                <div style={{ padding: 6 }}>
-                  <LayerRow node={root} depth={0} />
-                </div>
-              )}
-              {leftTab === "pages" && <PagesAndTokens />}
-            </div>
-          </div>
+          {leftPanel}
         </Panel>
         <PanelResizeHandle className="resize-handle" />
         <Panel minSize={30}>
@@ -362,12 +399,7 @@ export default function BuilderPage() {
         </Panel>
         <PanelResizeHandle className="resize-handle" />
         <Panel defaultSize={22} minSize={16} maxSize={40}>
-          <div className="panel" style={{ borderLeft: "1px solid var(--mfc-border)" }}>
-            <div className="panel-header">{t("builder.inspector")}</div>
-            <div className="panel-body">
-              <Inspector />
-            </div>
-          </div>
+          {inspector}
         </Panel>
       </PanelGroup>
       <A11yPanel />
