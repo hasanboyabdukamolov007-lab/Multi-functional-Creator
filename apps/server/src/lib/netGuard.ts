@@ -99,7 +99,7 @@ export interface GuardedResponse {
 
 export async function guardedFetch(
   rawUrl: string,
-  init: { method?: string; headers?: Record<string, string>; body?: string },
+  init: { method?: string; headers?: Record<string, string>; body?: string | Uint8Array },
   opts: { allowPrivate: boolean; timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = { allowPrivate: false },
 ): Promise<GuardedResponse> {
   const started = Date.now();

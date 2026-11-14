@@ -24,14 +24,28 @@ export const PERMISSIONS = [
   "http.send",
   /** Create, edit and run workflows. */
   "workflows.manage",
+  /** Add or change deploy targets (they hold provider tokens). */
+  "deploy.targets",
+  /** Deploy projects to configured targets, redeploy and roll back. */
+  "deploy.run",
+  /** Uptime monitors, analytics sites and the status page. */
+  "monitoring.manage",
+  /** Notification channels (email, Telegram, Slack, Discord, webhooks). */
+  "notifications.manage",
+  /** Comment and mention on projects. */
+  "comments.write",
+  /** Install, enable and remove plugins; publish to the marketplace. */
+  "plugins.manage",
+  /** Plans, payment methods and invoices. */
+  "billing.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const MATRIX: Record<Role, Permission[]> = {
   owner: [...PERMISSIONS],
-  admin: PERMISSIONS.filter((p) => p !== "workspace.manage"),
-  editor: ["projects.write", "projects.read", "secrets.read_meta", "secrets.write", "secrets.reveal", "ai.use", "data.query", "http.send", "workflows.manage"],
-  viewer: ["projects.read", "secrets.read_meta", "ai.use"],
+  admin: PERMISSIONS.filter((p) => p !== "workspace.manage" && p !== "billing.manage"),
+  editor: ["projects.write", "projects.read", "secrets.read_meta", "secrets.write", "secrets.reveal", "ai.use", "data.query", "http.send", "workflows.manage", "deploy.run", "monitoring.manage", "comments.write"],
+  viewer: ["projects.read", "secrets.read_meta", "ai.use", "comments.write"],
 };
 
 export function can(role: Role, permission: Permission): boolean {
