@@ -142,7 +142,9 @@ describe("self-training", () => {
 describe("quiz topics", () => {
   it("keeps a named category's quiz on topic", () => {
     const q = respond("quiz me on security", "en")!;
-    expect(q.quiz!.questions.every((x) => ["auth", "sql-injection", "xss", "csrf-cors", "ssrf", "secrets"].includes(x.entry))).toBe(true);
+    const security = new Set(KB.filter((e) => e.cat === "security").map((e) => e.id));
+    expect(q.quiz!.questions.length).toBeGreaterThan(0);
+    expect(q.quiz!.questions.every((x) => security.has(x.entry))).toBe(true);
     const ru = respond("викторина по базам данных", "ru")!;
     expect(ru.quiz!.questions.length).toBeGreaterThan(0);
   });

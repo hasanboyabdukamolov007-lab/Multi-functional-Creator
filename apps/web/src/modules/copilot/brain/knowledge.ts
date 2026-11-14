@@ -7,11 +7,12 @@ import { CODE } from "./kb/code";
 import { BACKEND } from "./kb/backend";
 import { OPS_DESIGN } from "./kb/ops-design";
 import { PANEL } from "./kb/panel";
+import { PLATFORM } from "./kb/platform";
 import { CAT_LABEL, type KCat, type KEntry, type L3 } from "./kb/types";
 import { normalize, stem, stems, tokens, trigrams, jaccard } from "./text";
 
 export type Lang = "en" | "uz" | "ru";
-export const KB: KEntry[] = [...WEB, ...CODE, ...BACKEND, ...OPS_DESIGN, ...PANEL];
+export const KB: KEntry[] = [...WEB, ...CODE, ...BACKEND, ...OPS_DESIGN, ...PLATFORM, ...PANEL];
 export const KB_BY_ID = new Map(KB.map((e) => [e.id, e]));
 export { CAT_LABEL };
 export type { KEntry, KCat, L3 };

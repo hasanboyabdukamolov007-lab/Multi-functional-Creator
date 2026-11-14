@@ -44,7 +44,7 @@ export const WEB: KEntry[] = [
     pitfalls: ["outline: none without a replacement focus style.", "Placeholder used as the only label.", "Light grey text on white."],
     related: ["html-semantics", "color-contrast"],
     quiz: [{ q: "Minimum contrast for normal body text under WCAG AA?", options: ["2:1", "3:1", "4.5:1", "7:1"], answer: 2, why: "4.5:1 for normal text; 3:1 for large text (≥24px or ≥19px bold)." }],
-    tryFn: "builder.a11y.check",
+    tryFn: "builder.a11y-check",
   },
   {
     id: "seo",
@@ -110,7 +110,7 @@ export const WEB: KEntry[] = [
     example: { lang: "css", code: ".cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }\nh1 { font-size: clamp(1.75rem, 4vw, 3rem); }\n@media (min-width: 900px) { .layout { grid-template-columns: 240px 1fr; } }" },
     related: ["flexbox", "css-grid"],
     quiz: [{ q: "Which grid template makes cards wrap automatically to fit any width?", options: ["repeat(3, 1fr)", "repeat(auto-fill, minmax(240px, 1fr))", "1fr 1fr", "auto auto auto"], answer: 1, why: "auto-fill + minmax creates as many columns as fit, each at least 240px." }],
-    tryFn: "builder.device.mobile",
+    tryFn: "builder.view.mobile",
   },
   {
     id: "flexbox",

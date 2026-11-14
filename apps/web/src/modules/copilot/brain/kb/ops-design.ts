@@ -100,7 +100,7 @@ export const OPS_DESIGN: KEntry[] = [
     },
     points: ["60-30-10: 60% neutral surface, 30% secondary, 10% accent.", "Never rely on color alone — add icons or text for status.", "Dark mode isn't inverted: lift surfaces with lighter greys, desaturate accents."],
     related: ["a11y", "design-systems"],
-    tryFn: "builder.palette.suggest",
+    tryFn: "builder.palette.ocean",
   },
   {
     id: "typography",
