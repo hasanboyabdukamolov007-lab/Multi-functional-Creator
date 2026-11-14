@@ -273,3 +273,62 @@ describe("GitHub repository editor (mock GitHub)", () => {
     expect((await app.inject({ method: "GET", url: `/api/w/${ws}/audit`, headers: h })).json().events.map((e: { action: string }) => e.action)).toContain("github.commit");
   });
 });
+
+describe("lead forms → Telegram", () => {
+  let app: FastifyInstance;
+  let mock: http.Server;
+  const sent: Array<{ url: string; body: { chat_id: string; text: string } }> = [];
+  beforeAll(async () => {
+    mock = http.createServer((rq, rs) => {
+      let b = "";
+      rq.on("data", (c) => (b += c));
+      rq.on("end", () => {
+        sent.push({ url: rq.url ?? "", body: JSON.parse(b || "{}") });
+        rs.setHeader("content-type", "application/json");
+        rs.end('{"ok":true}');
+      });
+    });
+    await new Promise<void>((r) => mock.listen(0, "127.0.0.1", r));
+    const cfg = loadConfig({ env: "test", inMemoryDb: true, webDist: undefined, allowPrivateNetwork: true });
+    cfg.providers = { ...cfg.providers, telegram: `http://127.0.0.1:${(mock.address() as AddressInfo).port}` };
+    app = await buildApp(cfg);
+  });
+  afterAll(async () => {
+    await app.close();
+    mock.close();
+  });
+
+  it("collects orders from any site, alerts Telegram and the owner, and tracks status", async () => {
+    const r = await app.inject({ method: "POST", url: "/api/auth/magic-link", headers: H, payload: { email: "shop@example.com" } });
+    const v = await app.inject({ method: "POST", url: "/api/auth/verify-code", headers: H, payload: { email: "shop@example.com", code: r.json().devCode } });
+    const h = { ...H, cookie: `mfc_session=${v.cookies.find((c) => c.name === "mfc_session")!.value}` };
+    const ws = (await app.inject({ method: "GET", url: "/api/auth/me", headers: h })).json().workspaces[0].id;
+    const sec = (await app.inject({ method: "POST", url: `/api/w/${ws}/secrets`, headers: h, payload: { name: "TG_BOT", value: "123:abc", environment: "production" } })).json().secret;
+    const ch = (await app.inject({ method: "POST", url: `/api/w/${ws}/monitoring/channels`, headers: h, payload: { name: "Shop Telegram", kind: "telegram", config: { chatId: "-100500" }, secretId: sec.id, events: ["test"] } })).json();
+    const form = (await app.inject({ method: "POST", url: `/api/w/${ws}/forms`, headers: h, payload: { name: "Kafe buyurtma", channelId: ch.id } })).json();
+    expect(form.endpoint).toMatch(new RegExp(`/api/f/${form.id}$`));
+
+    // A plain HTML form post from a static site (no CSRF header, urlencoded, browser Accept)
+    const html = await app.inject({ method: "POST", url: `/api/f/${form.id}`, headers: { "content-type": "application/x-www-form-urlencoded", accept: "text/html", referer: "https://kafe.uz/" }, payload: "Ismingiz=Aziz&Telefon+raqamingiz=%2B998901234567&Izoh=2+ta+osh&_gotcha=" });
+    expect(html.statusCode).toBe(200);
+    expect(html.body).toContain("Rahmat!");
+    expect(html.body).toContain('href="https://kafe.uz/"');
+    await new Promise((res) => setTimeout(res, 50));
+    expect(sent[0].url).toBe("/bot123:abc/sendMessage");
+    expect(sent[0].body.chat_id).toBe("-100500");
+    expect(sent[0].body.text).toContain("Yangi buyurtma — Kafe buyurtma");
+    expect(sent[0].body.text).toContain("Telefon raqamingiz: +998901234567");
+    // fetch() from a site, and a bot that fills the hidden field
+    expect((await app.inject({ method: "POST", url: `/api/f/${form.id}`, headers: { "content-type": "application/json" }, payload: { name: "Olga", phone: "+7 900" } })).json()).toMatchObject({ ok: true });
+    expect((await app.inject({ method: "POST", url: `/api/f/${form.id}`, headers: { "content-type": "application/json" }, payload: { name: "bot", _gotcha: "x" } })).json()).toEqual({ ok: true });
+    expect((await app.inject({ method: "POST", url: `/api/f/00000000-0000-0000-0000-000000000000`, headers: { "content-type": "application/json" }, payload: { a: "b" } })).statusCode).toBe(404);
+
+    const leads = (await app.inject({ method: "GET", url: `/api/w/${ws}/leads`, headers: h })).json().leads;
+    expect(leads).toHaveLength(2);
+    expect(leads[1]).toMatchObject({ form: "Kafe buyurtma", status: "new", page: "https://kafe.uz/", data: { Ismingiz: "Aziz", Izoh: "2 ta osh" } });
+    expect((await app.inject({ method: "PATCH", url: `/api/w/${ws}/leads/${leads[1].id}`, headers: h, payload: { status: "won" } })).statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: `/api/w/${ws}/leads?status=won`, headers: h })).json().leads).toHaveLength(1);
+    expect((await app.inject({ method: "GET", url: "/api/notifications", headers: h })).json().items[0]).toMatchObject({ kind: "lead", link: "/leads" });
+    expect((await app.inject({ method: "GET", url: `/api/w/${ws}/forms`, headers: h })).json().forms[0]).toMatchObject({ name: "Kafe buyurtma", channel: "Shop Telegram", leads: 2 });
+  });
+});

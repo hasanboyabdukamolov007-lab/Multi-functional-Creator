@@ -14,6 +14,9 @@ interface UiState {
   copilotOpen: boolean;
   onboardingOpen: boolean;
   sidebarCollapsed: boolean;
+  /** Studio mode: only the modules a web studio sells with (the rest stay reachable from the palette). */
+  focus: boolean;
+  setFocus: (v: boolean) => void;
   module: string;
   toasts: Toast[];
   setPalette: (v: boolean) => void;
@@ -32,6 +35,11 @@ export const useUi = create<UiState>((set, get) => ({
   copilotOpen: load("mfc.copilotOpen", false),
   onboardingOpen: !load("mfc.onboarded", false),
   sidebarCollapsed: load("mfc.sidebarCollapsed", false),
+  focus: load("mfc.focus", false),
+  setFocus: (focus) => {
+    save("mfc.focus", focus);
+    set({ focus });
+  },
   module: "home",
   toasts: [],
   setPalette: (paletteOpen) => set({ paletteOpen }),

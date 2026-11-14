@@ -486,3 +486,6 @@ html.shell-mobile body { padding-top: env(safe-area-inset-top); padding-bottom: 
 .gh-files .list-item { text-align: left; border: 0; background: none; color: inherit; padding: 4px 6px; border-radius: 6px; }
 .gh-files .list-item:disabled { opacity: .45; cursor: default; }
 @media (max-width: 900px) { .gh-layout { grid-template-columns: 1fr; } .gh-files { max-height: 30vh; } }
+.lead-new { border-left: 3px solid var(--mfc-accent); }
+.lead-won { border-left: 3px solid var(--mfc-success); }
+.lead-lost { opacity: .7; }

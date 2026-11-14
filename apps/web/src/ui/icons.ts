@@ -104,4 +104,5 @@ export {
   QrCode as IconQr,
   Laptop as IconLaptop,
   BellRing as IconBellRing,
+  Inbox as IconInbox,
 } from "lucide-react";

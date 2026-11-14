@@ -23,6 +23,48 @@ const SOCIAL: Record<string, string> = {
 const socialIcon = (name: string) => h("svg", { viewBox: "0 0 24 24", width: 20, height: 20, fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" }, h("path", { d: SOCIAL[name] ?? SITE_ICONS.globe }));
 
 export const EXTRA_COMPONENTS: ComponentDef[] = [
+  // ------------------------------------------------------------------ Local business (Uzbekistan)
+  {
+    type: "leadForm", label: "Order form → Telegram", category: "Forms", description: "Customers' orders and requests arrive in your Telegram and the Leads page",
+    defaults: { title: "Buyurtma qoldiring", text: "Biz 15 daqiqa ichida qo'ng'iroq qilamiz.", fields: "Ismingiz*\nTelefon raqamingiz*\nIzoh", buttonText: "Yuborish", endpoint: "" },
+    fields: [F.text("title", "Title"), F.text("text", "Text"), F.lines("fields", "Fields", "One per line; * = required. A field with 'telefon/phone' gets a phone keyboard."), F.text("buttonText", "Button text"), F.url("endpoint", "Form address (from the Leads page)")],
+    render: (p) => {
+      const fields = lines(p.fields).filter(Boolean);
+      return h("section", { class: "section" }, h("div", { class: "container narrow stack", style: { gap: "14px" } },
+        ...(p.title ? [h("h2", {}, String(p.title))] : []),
+        ...(p.text ? [h("p", { class: "muted" }, String(p.text))] : []),
+        h("form", { class: "stack form", method: "post", action: String(p.endpoint || "") || undefined, "accept-charset": "utf-8" },
+          ...fields.map((f) => {
+            const label = f.replace(/\*$/, "").trim();
+            const phone = /telefon|phone|тел/i.test(label);
+            const long = /izoh|comment|xabar|message|коммент|сообщ/i.test(label);
+            return labelled(label, long ? h("textarea", { class: "input", name: label, rows: 3, required: f.endsWith("*") }) : h("input", { class: "input", name: label, type: phone ? "tel" : "text", required: f.endsWith("*"), ...(phone ? { autocomplete: "tel", placeholder: "+998 90 123 45 67" } : {}) }));
+          }),
+          // Bots fill every field; people never see this one.
+          h("input", { type: "text", name: "_gotcha", tabindex: "-1", autocomplete: "off", style: { position: "absolute", left: "-9999px" }, "aria-hidden": "true" }),
+          h("button", { class: "btn btn-primary", type: "submit" }, String(p.buttonText ?? "Yuborish")),
+        )));
+    },
+  },
+  {
+    type: "payButton", label: "Payme / Click pay button", category: "Forms", description: "Pay-by-link button for Payme or Click (UZS)",
+    defaults: { provider: "payme", text: "Payme orqali to'lash", merchantId: "", serviceId: "", amount: 100000, account: "order_id", accountValue: "1", variant: "primary" },
+    fields: [F.sel("provider", "Provider", ["payme", "click"]), F.text("text", "Button text"), F.text("merchantId", "Merchant ID"), F.text("serviceId", "Click service ID (Click only)"), F.num("amount", "Amount (UZS)"), F.text("account", "Account field (Payme, e.g. order_id)"), F.text("accountValue", "Account / order value"), F.sel("variant", "Variant", ["primary", "secondary", "ghost"])],
+    render: (p) => {
+      const amount = Math.max(0, Math.round(Number(p.amount) || 0));
+      let href = "";
+      if (p.merchantId && amount) {
+        if (p.provider === "click") {
+          href = `https://my.click.uz/services/pay?${new URLSearchParams({ service_id: String(p.serviceId ?? ""), merchant_id: String(p.merchantId), amount: String(amount), transaction_param: String(p.accountValue ?? "") })}`;
+        } else {
+          // Payme checkout link: base64("m=<merchant>;ac.<field>=<value>;a=<amount in tiyin>")
+          const raw = `m=${p.merchantId};ac.${p.account || "order_id"}=${p.accountValue ?? ""};a=${amount * 100}`;
+          href = `https://checkout.paycom.uz/${btoa(unescape(encodeURIComponent(raw)))}`;
+        }
+      }
+      return btn(String(p.text ?? "To'lash"), href || "#", String(p.variant ?? "primary"), { rel: "noopener", ...(href ? { target: "_blank" } : { "aria-disabled": "true", title: "Set the merchant ID and amount" }) });
+    },
+  },
   // ------------------------------------------------------------------ Layout
   { type: "panel", label: "Titled panel", category: "Layout", description: "Box with a header and content slot", container: true, defaults: { title: "Panel title", action: "View all" }, fields: [F.text("title", "Title"), F.text("action", "Header link")],
     render: (p) => h("div", { class: "box stack", style: { gap: "16px" } }, h("div", { class: "row", style: { justifyContent: "space-between" } }, h("h3", {}, String(p.title ?? "")), ...(p.action ? [h("a", { class: "link text-sm", href: "#" }, String(p.action))] : [])), h("div", { class: "stack" }, SLOT)) },

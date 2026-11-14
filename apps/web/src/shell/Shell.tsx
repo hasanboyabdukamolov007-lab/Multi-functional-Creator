@@ -19,6 +19,9 @@ import { usePwa } from "../lib/pwa";
 import { ask, DialogHost } from "../ui/dialog";
 import { useNet } from "../lib/guards";
 
+/** Studio mode: what a web studio needs to build, ship and look after client sites. */
+const STUDIO = new Set(["home", "builder", "leads", "media", "github", "deploy", "monitoring", "vault", "academy", "settings"]);
+
 const CopilotPanel = lazy(() => import("../modules/copilot/CopilotPanel"));
 
 const GROUPS = [
@@ -56,7 +59,7 @@ export function Shell() {
   const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
-  const { sidebarCollapsed, toggleSidebar, copilotOpen, setCopilot, setPalette, setModule } = useUi();
+  const { sidebarCollapsed, toggleSidebar, copilotOpen, setCopilot, setPalette, setModule, focus, setFocus } = useUi();
   const { user, workspaces, workspaceId, setWorkspace, logout, refresh } = useSession();
   const theme = useTheme((s) => s.active());
   const { locale, setLocale } = useI18n();
@@ -182,10 +185,10 @@ export function Shell() {
       {compact && !sidebarCollapsed && <div className="drawer-backdrop" onClick={toggleSidebar} aria-hidden="true" />}
       {compact && menu && <div className="drawer-backdrop transparent" onClick={() => setMenu(false)} aria-hidden="true" />}
       <nav className={`sidebar ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Modules">
-        {GROUPS.map(([g, key]) => (
+        {GROUPS.filter(([g]) => MODULES.some((m) => m.group === g && (!focus || STUDIO.has(m.id)))).map(([g, key]) => (
           <div key={g}>
             <div className="nav-group-title">{t(key)}</div>
-            {MODULES.filter((m) => m.group === g).map((m) => (
+            {MODULES.filter((m) => m.group === g && (!focus || STUDIO.has(m.id))).map((m) => (
               <NavLink key={m.id} to={m.path} end={m.path === "/"} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`} title={t(m.labelKey)}>
                 <m.icon size={18} />
                 <span className="nav-label">{t(m.labelKey)}</span>
@@ -195,6 +198,9 @@ export function Shell() {
           </div>
         ))}
         <div className="grow" />
+        <label className="nav-label row small" style={{ gap: 6, padding: "0 8px 6px", cursor: "pointer" }} title={t("focus.hint")}>
+          <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} /> {t("focus.label")}
+        </label>
         <div className="nav-label small muted" style={{ padding: "0 8px" }}>
           {t("common.functions", { n: registry.size })}
         </div>

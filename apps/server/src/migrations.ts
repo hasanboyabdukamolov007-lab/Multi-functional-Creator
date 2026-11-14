@@ -445,4 +445,26 @@ CREATE TABLE IF NOT EXISTS billing_events (
   received_at timestamptz NOT NULL DEFAULT now()
 )`,
   },
+  {
+    id: 10,
+    name: "lead forms",
+    sql: `
+CREATE TABLE IF NOT EXISTS forms (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  channel_id uuid REFERENCES notification_channels(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS leads (
+  id uuid PRIMARY KEY,
+  form_id uuid NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  data jsonb NOT NULL,
+  page text,
+  status text NOT NULL DEFAULT 'new',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS leads_recent ON leads (workspace_id, created_at DESC)`,
+  },
 ];
