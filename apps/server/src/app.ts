@@ -31,6 +31,7 @@ import { billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
 import { pushRoutes } from "./routes/push.js";
 import { githubRoutes } from "./routes/github.js";
 import { formPublicRoutes, formRoutes } from "./routes/forms.js";
+import { telegramRoutes } from "./routes/telegram.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -156,6 +157,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(pushRoutes, { prefix: "/api/push" });
   await app.register(githubRoutes, { prefix: "/api/w/:workspaceId/github" });
   await app.register(formRoutes, { prefix: "/api/w/:workspaceId" });
+  await app.register(telegramRoutes, { prefix: "/api/w/:workspaceId/telegram" });
   await app.register(formPublicRoutes, { prefix: "/api" });
 
   // What the web, desktop and mobile clients need to know about this server.

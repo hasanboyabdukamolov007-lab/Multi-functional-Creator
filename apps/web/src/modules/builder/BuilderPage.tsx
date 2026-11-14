@@ -6,7 +6,7 @@ import { A11yPanel, PageSettings } from "./A11yPanel";
 import { CATALOG, CATEGORIES, CATALOG_MAP, defFor } from "./catalog";
 import { Canvas, DRAG_MIME, MOVE_MIME } from "./Canvas";
 import { Inspector } from "./Inspector";
-import { TEMPLATES } from "./templates";
+import { TEMPLATES, UZ_TEMPLATES } from "./templates";
 import type { BNode, SiteTokens } from "./model";
 import { projectsApi, type ProjectKind, type ProjectSummary } from "../../lib/projects";
 import { CollabBar } from "../collab/CollabBar";
@@ -224,11 +224,12 @@ function Toolbar() {
       <div className="grow" />
       <select className="select input-sm" style={{ width: 190 }} value="" onChange={(e) => e.target.value && runFunction(`builder.template.${e.target.value}`).catch((err: Error) => toast(err.message, "error"))}>
         <option value="">Insert template…</option>
-        {TEMPLATES.map((tp) => (
-          <option key={tp.id} value={tp.id}>
-            {tp.name}
-          </option>
-        ))}
+        <optgroup label="O'zbekiston · biznes">
+          {UZ_TEMPLATES.map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
+        </optgroup>
+        <optgroup label="General">
+          {TEMPLATES.map((tp) => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
+        </optgroup>
       </select>
       <button className="btn btn-sm" onClick={() => useBuilderUi.getState().set({ a11yOpen: true })} title={t("builder.a11yTitle")}>
         <I.IconShield size={14} /> {t("builder.check")}

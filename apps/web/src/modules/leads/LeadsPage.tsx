@@ -13,6 +13,59 @@ interface Lead { id: string; form_id: string; form: string; data: Record<string,
 interface Channel { id: string; name: string; kind: string }
 const STATUSES = ["new", "contacted", "won", "lost"] as const;
 
+/** Connect a Telegram bot in three steps: paste the token, say hello to the bot, pick the chat. */
+function TelegramWizard({ t, onDone, onClose }: { t: (k: string, v?: Record<string, string | number>) => string; onDone: () => void; onClose: () => void }) {
+  const [token, setToken] = useState("");
+  const [found, setFound] = useState<{ bot: string; chats: Array<{ id: string; type: string; name: string }> } | null>(null);
+  const [chatId, setChatId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const find = () => run(async () => {
+    const r = await api.post<{ bot: string; chats: Array<{ id: string; type: string; name: string }> }>(ws("/telegram/chats"), { token: token.trim() });
+    setFound(r);
+    if (r.chats[0] && !chatId) setChatId(r.chats[0].id);
+  });
+  const connect = () => run(async () => {
+    await api.post(ws("/telegram/connect"), { token: token.trim(), chatId: chatId.trim() });
+    toast(t("tg.connected"), "success");
+    onDone();
+  });
+  return (
+    <div className="card col" style={{ gap: 10 }}>
+      <div className="row"><strong className="grow">{t("tg.title")}</strong><button className="icon-btn" aria-label={t("common.close")} onClick={onClose}><I.IconClose size={14} /></button></div>
+      <ol className="small col" style={{ gap: 4, margin: 0, paddingLeft: 18 }}>
+        <li>{t("tg.step1")}</li>
+        <li>{t("tg.step2")}</li>
+        <li>{t("tg.step3")}</li>
+      </ol>
+      <div className="row" style={{ gap: 6 }}>
+        <input className="input mono grow" type="password" autoComplete="off" placeholder="123456789:AA…" value={token} onChange={(e) => setToken(e.target.value)} aria-label={t("tg.token")} />
+        <button className="btn" disabled={busy || token.trim().length < 30} onClick={() => void find()}>{found ? t("tg.recheck") : t("tg.find")}</button>
+      </div>
+      {found && (
+        <div className="col" style={{ gap: 6 }}>
+          <span className="small">Bot: <a href={`https://t.me/${found.bot}`} target="_blank" rel="noreferrer">@{found.bot}</a></span>
+          {found.chats.length === 0 && <span className="hint">{t("tg.noChats", { bot: found.bot })}</span>}
+          {found.chats.map((c) => (
+            <label key={c.id} className="row small" style={{ gap: 6 }}><input type="radio" name="tgchat" checked={chatId === c.id} onChange={() => setChatId(c.id)} /> {c.name} <span className="muted">· {c.type}</span></label>
+          ))}
+          <input className="input mono" placeholder={t("tg.manual")} value={chatId} onChange={(e) => setChatId(e.target.value)} aria-label={t("tg.manual")} />
+          <div className="row"><button className="btn btn-primary" disabled={busy || !chatId.trim()} onClick={() => void connect()}>{t("tg.connect")}</button></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Orders and requests from client sites: forms that post to the panel and alert Telegram, plus a simple pipeline. */
 export default function LeadsPage() {
   const t = useT();
@@ -22,12 +75,14 @@ export default function LeadsPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [status, setStatus] = useState("");
   const [adding, setAdding] = useState<{ name: string; channelId: string } | null>(null);
+  const [wizard, setWizard] = useState(false);
+  const loadChannels = () => void api.get<{ channels: Channel[] }>(ws("/monitoring/channels")).then((r) => setChannels(r.channels)).catch(() => setChannels([]));
   const reload = () => {
     void api.get<{ forms: Form[] }>(ws("/forms")).then((r) => setForms(r.forms)).catch(() => setForms([]));
     void api.get<{ leads: Lead[] }>(ws(`/leads${status ? `?status=${status}` : ""}`)).then((r) => setLeads(r.leads)).catch(() => setLeads([]));
   };
   useEffect(reload, [status]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => void api.get<{ channels: Channel[] }>(ws("/monitoring/channels")).then((r) => setChannels(r.channels)).catch(() => setChannels([])), []);
+  useEffect(loadChannels, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +111,12 @@ export default function LeadsPage() {
             <h1 className="page-title">{t("nav.leads")}</h1>
             <p className="page-subtitle">{t("leads.subtitle")}</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setAdding({ name: "", channelId: channels.find((c) => c.kind === "telegram")?.id ?? "" })}><I.IconPlus size={14} /> {t("leads.newForm")}</button>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn" onClick={() => setWizard(true)}><I.IconSend size={14} /> {t("tg.button")}</button>
+            <button className="btn btn-primary" onClick={() => setAdding({ name: "", channelId: channels.find((c) => c.kind === "telegram")?.id ?? "" })}><I.IconPlus size={14} /> {t("leads.newForm")}</button>
+          </div>
         </div>
+        {wizard && <TelegramWizard t={t} onClose={() => setWizard(false)} onDone={() => (setWizard(false), loadChannels())} />}
 
         {adding && (
           <form className="card col" style={{ gap: 10 }} onSubmit={create}>
@@ -66,7 +125,7 @@ export default function LeadsPage() {
               <option value="">{t("leads.noChannel")}</option>
               {channels.map((c) => <option key={c.id} value={c.id}>{c.kind} · {c.name}</option>)}
             </select>
-            {!channels.some((c) => c.kind === "telegram") && <span className="hint">{t("leads.telegramHint")} <a href="/monitoring?tab=alerts">{t("nav.monitoring")} →</a></span>}
+            {!channels.some((c) => c.kind === "telegram") && <span className="hint">{t("leads.telegramHint")} <button type="button" className="btn btn-sm" onClick={() => setWizard(true)}>{t("tg.button")}</button></span>}
             <div className="row" style={{ gap: 8 }}><button className="btn btn-primary">{t("common.save")}</button><button type="button" className="btn btn-ghost" onClick={() => setAdding(null)}>{t("common.cancel")}</button></div>
           </form>
         )}

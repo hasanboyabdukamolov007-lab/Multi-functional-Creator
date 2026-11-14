@@ -876,6 +876,18 @@ export const en = {
   "leads.st.contacted": "Contacted",
   "leads.st.won": "Won",
   "leads.st.lost": "Lost",
+  "tg.button": "Connect Telegram",
+  "tg.title": "Connect a Telegram bot",
+  "tg.step1": "In Telegram open @BotFather → /newbot, choose a name, and paste the token it gives you here.",
+  "tg.step2": "Write /start to your bot — or add it to your team's group and send any message there.",
+  "tg.step3": "Press “Find chats”, pick where orders should go, and connect. A test message is sent right away.",
+  "tg.token": "Bot token",
+  "tg.find": "Find chats",
+  "tg.recheck": "Check again",
+  "tg.noChats": "No chats yet — write /start to @{bot} (or a message in your group), then press “Check again”.",
+  "tg.manual": "…or enter a chat id / @channel",
+  "tg.connect": "Connect",
+  "tg.connected": "Telegram connected — check the test message",
 };
 
 export type Dict = typeof en;

@@ -177,3 +177,75 @@ export const TEMPLATES: Template[] = [
     ],
   },
 ];
+
+// ------------------------------------------------------------------ Uzbekistan small business (order form → Telegram, Payme)
+const uzNav = (brand: string, cta: string) => n("navbar", { brand, links: "Xizmatlar|#xizmatlar\nNarxlar|#narxlar\nSavollar|#savollar\nAloqa|#aloqa", ctaText: cta, ctaHref: "#buyurtma", sticky: true });
+const uzFooter = (brand: string, phone: string) => n("footer", { text: `© 2026 ${brand} · ${phone}`, links: "Telegram|https://t.me/\nInstagram|https://instagram.com/\nXarita|https://yandex.uz/maps" });
+const order = (title: string, fields: string, text = "Ma'lumotlaringizni qoldiring — 15 daqiqada qo'ng'iroq qilamiz.") => n("leadForm", { title, text, fields, buttonText: "Yuborish", endpoint: "" });
+const pay = (text: string, amount: number) => n("payButton", { provider: "payme", text, merchantId: "", serviceId: "", amount, account: "order_id", accountValue: "1", variant: "primary" });
+
+export const UZ_TEMPLATES: Template[] = [
+  {
+    id: "uz-cafe",
+    name: "Kafe / restoran (o'zbekcha)",
+    description: "Menyu, narxlar, yetkazib berish buyurtmasi Telegram'ga, Payme orqali to'lov",
+    tokens: { primary: "#c2410c", primaryText: "#ffffff" },
+    build: () => [
+      uzNav("Choyxona Lazzat", "Buyurtma berish"),
+      n("hero", { eyebrow: "Har kuni 09:00 – 23:00", title: "Issiq osh va somsa — 40 daqiqada eshigingizda", subtitle: "Toshkent bo'ylab yetkazib beramiz. Buyurtmani shu yerda qoldiring yoki qo'ng'iroq qiling.", primaryText: "Buyurtma berish", primaryHref: "#buyurtma", secondaryText: "Menyu", secondaryHref: "#xizmatlar" }),
+      n("features", { title: "Menyu", subtitle: "Eng ko'p buyurtma qilinadiganlar", items: "star|To'y oshi|Bir porsiya — 45 000 so'm\nheart|Tandir somsa|Bir dona — 9 000 so'm\nbolt|Lag'mon|Bir porsiya — 38 000 so'm\nusers|Oilaviy to'plam|4 kishilik — 220 000 so'm" }),
+      n("statsband", { items: "40 daq|O'rtacha yetkazish\n4.9★|Mijozlar bahosi\n12 yil|Tajriba\n0 so'm|Yetkazish 150 000 dan yuqori" }),
+      order("Yetkazib berish buyurtmasi", "Ismingiz*\nTelefon raqamingiz*\nManzil*\nBuyurtma (taomlar, soni)*\nIzoh"),
+      pay("Payme orqali oldindan to'lash", 150000),
+      n("faq", { title: "Savollar", items: "Yetkazish qancha turadi?|150 000 so'mdan yuqori buyurtmalarga bepul, qolganiga 15 000 so'm.\nQanday to'lash mumkin?|Naqd, Payme yoki Click orqali.\nTo'y va tadbirlarga buyurtma olasizmi?|Ha — formada kishilar sonini yozing, menejer bog'lanadi." }),
+      uzFooter("Choyxona Lazzat", "+998 90 000 00 00"),
+    ],
+  },
+  {
+    id: "uz-clinic",
+    name: "Klinika / stomatologiya (o'zbekcha)",
+    description: "Xizmatlar, shifokorlar, narxlar, qabulga yozilish Telegram'ga",
+    tokens: { primary: "#0e7490", primaryText: "#ffffff" },
+    build: () => [
+      uzNav("Sog'lom Tabassum", "Qabulga yozilish"),
+      n("hero", { eyebrow: "Litsenziyalangan klinika", title: "Og'riqsiz davolash va bepul birinchi ko'rik", subtitle: "Zamonaviy uskunalar, tajribali shifokorlar va shaffof narxlar.", primaryText: "Qabulga yozilish", primaryHref: "#buyurtma", secondaryText: "Narxlar", secondaryHref: "#narxlar" }),
+      n("features", { title: "Xizmatlar", subtitle: "Bir joyda — butun oila uchun", items: "shield|Davolash|Tish kariesi va kanallarni davolash\nstar|Implantatsiya|Kafolat bilan, 1 kunda\nheart|Bolalar stomatologiyasi|Qo'rquvsiz, o'yin tarzida\nbolt|Oqartirish|1 seansda 6–8 ton" }),
+      n("pricing", { title: "Narxlar", plans: "Ko'rik|0 so'm||Birinchi ko'rik;Davolash rejasi|\nPlomba|350 000 so'm|dan|Mahalliy og'riqsizlantirish;Kafolat 1 yil|featured\nImplant|4 500 000 so'm|dan|Koreya implanti;Kafolat 5 yil|" }),
+      n("testimonial", { quote: "Bolam birinchi marta stomatologdan qo'rqmay chiqdi. Rahmat!", author: "Malika (namuna)", role: "Bemorning onasi" }),
+      order("Qabulga yozilish", "Ismingiz*\nTelefon raqamingiz*\nXizmat (masalan: ko'rik, plomba)\nQulay kun va vaqt"),
+      n("faq", { title: "Savollar", items: "Birinchi ko'rik haqiqatan bepulmi?|Ha, ko'rik va davolash rejasi bepul.\nBo'lib to'lash bormi?|Implantatsiyada 6 oygacha bo'lib to'lash mumkin.\nDam olish kunlari ishlaysizmi?|Shanba kuni 10:00 dan 16:00 gacha." }),
+      uzFooter("Sog'lom Tabassum", "+998 90 000 00 00"),
+    ],
+  },
+  {
+    id: "uz-education",
+    name: "O'quv markazi (o'zbekcha)",
+    description: "Kurslar, narxlar, natijalar, bepul sinov darsiga yozilish, Payme to'lov",
+    tokens: { primary: "#4338ca", primaryText: "#ffffff" },
+    build: () => [
+      uzNav("Bilim Markazi", "Sinov darsiga yozilish"),
+      n("hero", { eyebrow: "Yangi guruhlar har oy", title: "IELTS, IT va matematika — natija kafolati bilan", subtitle: "Kichik guruhlar, tajribali ustozlar va birinchi dars bepul.", primaryText: "Bepul sinov darsi", primaryHref: "#buyurtma", secondaryText: "Kurslar", secondaryHref: "#xizmatlar" }),
+      n("features", { title: "Kurslar", subtitle: "Har yoshdagi o'quvchilar uchun", items: "star|IELTS 7.0+|4 oy, haftasiga 3 dars\nbolt|Frontend dasturlash|6 oy, portfolio bilan\nshield|Matematika (DTM)|Abituriyentlar uchun\nusers|Bolalar ingliz tili|7–12 yosh" }),
+      n("statsband", { items: "1 200+|Bitiruvchilar\n87%|Maqsadli ballga erishdi\n12|Ustozlar\n8–12|Guruhda o'quvchi" }),
+      n("pricing", { title: "Narxlar", plans: "Guruh|600 000 so'm|/oy|Haftasiga 3 dars;Uy vazifasi tekshiruvi|\nIntensiv|900 000 so'm|/oy|Haftasiga 5 dars;Mock imtihonlar|featured\nYakka|150 000 so'm|/dars|Shaxsiy reja;Qulay vaqt|" }),
+      order("Bepul sinov darsiga yozilish", "Ismingiz*\nTelefon raqamingiz*\nKurs*\nYoshingiz"),
+      pay("Oylik to'lovni Payme orqali", 600000),
+      uzFooter("Bilim Markazi", "+998 90 000 00 00"),
+    ],
+  },
+  {
+    id: "uz-realestate",
+    name: "Ko'chmas mulk agentligi (o'zbekcha)",
+    description: "Obyektlar, xizmatlar, ko'rishga yozilish so'rovi Telegram'ga",
+    tokens: { primary: "#15803d", primaryText: "#ffffff" },
+    build: () => [
+      uzNav("Uy Topar", "Ko'rishga yozilish"),
+      n("hero", { eyebrow: "Toshkent va viloyatlar", title: "Orzuingizdagi uyni 2 haftada topamiz", subtitle: "Tekshirilgan obyektlar, yuridik tozalik va ipoteka bo'yicha yordam.", primaryText: "Uy tanlash", primaryHref: "#buyurtma", secondaryText: "Xizmatlar", secondaryHref: "#xizmatlar" }),
+      n("features", { title: "Xizmatlar", subtitle: "Bitimning boshidan oxirigacha", items: "shield|Yuridik tekshiruv|Hujjatlar va qarzdorlik tekshiriladi\nstar|Ipoteka|Banklar bilan hamkorlik\nusers|Ijaraga berish|Ishonchli ijarachilar topamiz\nbolt|Baholash|1 kunda bozor narxi" }),
+      n("statsband", { items: "850+|Bitimlar\n14 kun|O'rtacha topish muddati\n100%|Yuridik tekshiruv\n0 so'm|Ko'rik bepul" }),
+      order("Ko'rishga yozilish yoki uy so'rovi", "Ismingiz*\nTelefon raqamingiz*\nQidirayotgan uy (tuman, xonalar, byudjet)*\nSotib olish yoki ijara?"),
+      n("faq", { title: "Savollar", items: "Xizmat haqi qancha?|Bitim summasining 1% (kelishilgan holda).\nIpoteka bilan yordam berasizmi?|Ha, hujjatlarni tayyorlab bankka topshiramiz.\nObyektni sotishga qo'ysam bo'ladimi?|Ha — formada \"Sotish\" deb yozing." }),
+      uzFooter("Uy Topar", "+998 90 000 00 00"),
+    ],
+  },
+];

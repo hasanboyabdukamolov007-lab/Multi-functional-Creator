@@ -5,7 +5,7 @@ import { scanForLeaks } from "@mfc/core";
 import { previewInNewTab, useBuilder, useBuilderUi } from "./store";
 import { auditPage, contrastRatio } from "./a11y";
 import { CATALOG, CATALOG_MAP, defFor } from "./catalog";
-import { TEMPLATES } from "./templates";
+import { TEMPLATES, UZ_TEMPLATES } from "./templates";
 import { pageHtml, pageReact, siteCss } from "./exporters";
 import { DEFAULT_TOKENS, n, type SiteTokens } from "./model";
 
@@ -71,7 +71,7 @@ export function registerBuilderFunctions() {
   for (const tone of ["surface", "primary", "dark"]) fns.push({ id: `builder.insert.section-${tone}`, title: `Insert ${tone} section`, category: "Builder · Insert", when: hasProject, run: () => B().insert(n("section", { tone })).id });
 
   // Templates
-  for (const tp of TEMPLATES) {
+  for (const tp of [...TEMPLATES, ...UZ_TEMPLATES]) {
     fns.push({
       id: `builder.template.${tp.id}`,
       title: `Template: ${tp.name}`,
@@ -85,9 +85,23 @@ export function registerBuilderFunctions() {
           await B().open(p.id);
         } else if (ctx.module !== "builder") ctx.navigate(`/builder?project=${B().projectId}`);
         const root = B().page().root;
+        const nodes = tp.build();
+        // Order forms work out of the box: create a form (sent to the first Telegram channel, if any) and wire it in.
+        const forms = nodes.filter((x) => x.type === "leadForm" && !x.props.endpoint);
+        if (forms.length) {
+          try {
+            const { api } = await import("../../lib/api");
+            const { ws } = await import("../../lib/session");
+            const chans = await api.get<{ channels: Array<{ id: string; kind: string }> }>(ws("/monitoring/channels")).catch(() => ({ channels: [] as Array<{ id: string; kind: string }> }));
+            const f = await api.post<{ endpoint: string }>(ws("/forms"), { name: `${B().projectName || tp.name} — buyurtmalar`, channelId: chans.channels.find((c) => c.kind === "telegram")?.id ?? null });
+            for (const x of forms) x.props.endpoint = f.endpoint;
+          } catch {
+            /* offline or no permission: the form stays unwired; the Leads page can add one */
+          }
+        }
         B().mutate((doc, page) => {
           if (tp.tokens) Object.assign(doc.tokens, tp.tokens);
-          page.root.children.push(...tp.build());
+          page.root.children.push(...nodes);
         });
         toast(`Inserted "${tp.name}" (${root.children.length ? "appended" : "new page"})`, "success");
       },

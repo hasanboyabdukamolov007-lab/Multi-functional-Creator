@@ -351,7 +351,7 @@ export const CATALOG: ComponentDef[] = [
   },
   {
     type: "testimonial", label: "Testimonial", category: "Sections", description: "Customer quote",
-    defaults: { quote: "We replaced four tools with this panel and cut our release time in half.", author: "Dilnoza Rahimova", role: "Head of Product, Uzum" },
+    defaults: { quote: "We replaced four tools with this panel and cut our release time in half.", author: "Dilnoza R.", role: "Head of Product, Northwind (example)" },
     fields: [F.area("quote", "Quote"), F.text("author", "Author"), F.text("role", "Role")],
     render: (p) => h("figure", { class: "box testimonial" }, h("blockquote", { class: "text-lg" }, `“${p.quote ?? ""}”`), h("figcaption", { class: "row" }, h("span", { class: "avatar", style: { width: "40px", height: "40px" } }, String(p.author ?? "?").split(/\s+/).map((s) => s[0]).join("").slice(0, 2)), h("span", { class: "stack", style: { gap: "0" } }, h("strong", {}, String(p.author ?? "")), h("span", { class: "muted text-sm" }, String(p.role ?? ""))))),
   },

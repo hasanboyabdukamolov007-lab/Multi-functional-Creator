@@ -332,3 +332,64 @@ describe("lead forms → Telegram", () => {
     expect((await app.inject({ method: "GET", url: `/api/w/${ws}/forms`, headers: h })).json().forms[0]).toMatchObject({ name: "Kafe buyurtma", channel: "Shop Telegram", leads: 2 });
   });
 });
+
+describe("Telegram connect wizard", () => {
+  let app: FastifyInstance;
+  let mock: http.Server;
+  const msgs: Array<{ chat_id: string; text: string }> = [];
+  const TOKEN = "123456789:AAFakeTokenForTestsOnly_abcdefghijklmn";
+  beforeAll(async () => {
+    mock = http.createServer((rq, rs) => {
+      let b = "";
+      rq.on("data", (c) => (b += c));
+      rq.on("end", () => {
+        rs.setHeader("content-type", "application/json");
+        const [, token, method] = /^\/bot([^/]+)\/(\w+)/.exec(rq.url ?? "") ?? [];
+        if (token !== TOKEN) return rs.writeHead(401).end('{"ok":false,"description":"Unauthorized"}');
+        if (method === "getMe") return rs.end(JSON.stringify({ ok: true, result: { username: "kafe_lazzat_bot", first_name: "Kafe" } }));
+        if (method === "getUpdates") return rs.end(JSON.stringify({ ok: true, result: [
+          { message: { chat: { id: 5551, type: "private", first_name: "Aziz", username: "aziz" } } },
+          { my_chat_member: { chat: { id: -1009, type: "supergroup", title: "Kafe buyurtmalar" } } },
+          { message: { chat: { id: 5551, type: "private", first_name: "Aziz", username: "aziz" } } },
+        ] }));
+        if (method === "sendMessage") {
+          msgs.push(JSON.parse(b));
+          return rs.end('{"ok":true,"result":{}}');
+        }
+        rs.writeHead(404).end('{"ok":false}');
+      });
+    });
+    await new Promise<void>((r) => mock.listen(0, "127.0.0.1", r));
+    const cfg = loadConfig({ env: "test", inMemoryDb: true, webDist: undefined, allowPrivateNetwork: true });
+    cfg.providers = { ...cfg.providers, telegram: `http://127.0.0.1:${(mock.address() as AddressInfo).port}` };
+    app = await buildApp(cfg);
+  });
+  afterAll(async () => {
+    await app.close();
+    mock.close();
+  });
+
+  it("finds chats from the bot's updates, then saves the token and creates a channel", async () => {
+    const r = await app.inject({ method: "POST", url: "/api/auth/magic-link", headers: H, payload: { email: "tg@example.com" } });
+    const v = await app.inject({ method: "POST", url: "/api/auth/verify-code", headers: H, payload: { email: "tg@example.com", code: r.json().devCode } });
+    const h = { ...H, cookie: `mfc_session=${v.cookies.find((c) => c.name === "mfc_session")!.value}` };
+    const ws = (await app.inject({ method: "GET", url: "/api/auth/me", headers: h })).json().workspaces[0].id;
+    const post = (p: string, payload: unknown) => app.inject({ method: "POST", url: `/api/w/${ws}/telegram${p}`, headers: h, payload: payload as object });
+    expect((await post("/chats", { token: "nope" })).statusCode).toBe(400);
+    expect((await post("/chats", { token: "123456789:AAWrongTokenWrongTokenWrongToken_xyz" })).json().error).toMatch(/doesn't recognise/);
+    const found = (await post("/chats", { token: TOKEN })).json();
+    expect(found).toMatchObject({ bot: "kafe_lazzat_bot" });
+    expect(found.chats).toEqual([{ id: "-1009", type: "supergroup", name: "Kafe buyurtmalar" }, { id: "5551", type: "private", name: "Aziz (@aziz)" }]);
+    const c = (await post("/connect", { token: TOKEN, chatId: "-1009" })).json();
+    expect(c).toMatchObject({ bot: "kafe_lazzat_bot", name: "Telegram @kafe_lazzat_bot" });
+    expect(msgs[0]).toMatchObject({ chat_id: "-1009" });
+    const chans = (await app.inject({ method: "GET", url: `/api/w/${ws}/monitoring/channels`, headers: h })).json().channels;
+    expect(chans[0]).toMatchObject({ kind: "telegram", config: { chatId: "-1009" } });
+    const secrets = (await app.inject({ method: "GET", url: `/api/w/${ws}/secrets`, headers: h })).json().secrets;
+    expect(secrets.map((s: { name: string }) => s.name)).toContain("TELEGRAM_BOT_KAFE_LAZZAT_BOT");
+    expect(JSON.stringify(secrets)).not.toContain("AAFakeToken");
+    // Connecting again reuses the vault secret (new version) instead of duplicating it
+    await post("/connect", { token: TOKEN, chatId: "5551", name: "Aziz" });
+    expect((await app.inject({ method: "GET", url: `/api/w/${ws}/secrets`, headers: h })).json().secrets.filter((s: { name: string }) => s.name.startsWith("TELEGRAM_BOT_"))).toHaveLength(1);
+  });
+});
