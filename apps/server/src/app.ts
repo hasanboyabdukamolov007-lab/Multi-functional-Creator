@@ -29,6 +29,7 @@ import { collabRoutes, notificationRoutes } from "./routes/collab.js";
 import { marketRoutes } from "./routes/market.js";
 import { billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
 import { pushRoutes } from "./routes/push.js";
+import { githubRoutes } from "./routes/github.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -152,6 +153,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(billingRoutes, { prefix: "/api/w/:workspaceId/billing" });
   await app.register(billingWebhookRoutes, { prefix: "/api/billing" });
   await app.register(pushRoutes, { prefix: "/api/push" });
+  await app.register(githubRoutes, { prefix: "/api/w/:workspaceId/github" });
 
   // What the web, desktop and mobile clients need to know about this server.
   // Public and credential-free, so the desktop / mobile connect screens may read it cross-origin.

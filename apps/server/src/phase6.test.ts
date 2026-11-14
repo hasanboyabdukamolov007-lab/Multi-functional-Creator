@@ -210,3 +210,62 @@ describe("billing (mock Stripe) and push devices", () => {
     expect(verifyStripeSignature(body, signStripePayload(body, "s", 1000), "s", 300, 2_000_000)).toBe(false); // replay window
   });
 });
+
+describe("GitHub repository editor (mock GitHub)", () => {
+  let app: FastifyInstance;
+  let mock: http.Server;
+  const commits: Array<{ path: string; body: Record<string, string>; auth?: string }> = [];
+  beforeAll(async () => {
+    mock = http.createServer((rq, rs) => {
+      let body = "";
+      rq.on("data", (c) => (body += c));
+      rq.on("end", () => {
+        const u = rq.url ?? "";
+        rs.setHeader("content-type", "application/json");
+        const priv = u.startsWith("/repos/me/secret");
+        if (priv && rq.headers.authorization !== "Bearer ghp_test") return rs.writeHead(404).end('{"message":"Not Found"}');
+        if (/^\/repos\/me\/(site|secret)$/.test(u)) return rs.end(JSON.stringify({ default_branch: "main", private: priv, permissions: { push: !!rq.headers.authorization } }));
+        if (u.startsWith("/repos/me/site/git/trees/main")) return rs.end(JSON.stringify({ truncated: false, tree: [{ path: "index.html", type: "blob", size: 120 }, { path: "img/logo.png", type: "blob", size: 9000 }, { path: "css", type: "tree" }] }));
+        if (u.startsWith("/repos/me/site/contents/index.html") && rq.method === "GET") return rs.end(JSON.stringify({ type: "file", size: 20, sha: "abc", content: Buffer.from("<h1>Salom</h1>").toString("base64") }));
+        if (u.startsWith("/repos/me/site/contents/") && rq.method === "PUT") {
+          commits.push({ path: u, body: JSON.parse(body), auth: rq.headers.authorization });
+          return rs.end(JSON.stringify({ content: { sha: "def" }, commit: { sha: "c1", html_url: "https://github.com/me/site/commit/c1" } }));
+        }
+        rs.writeHead(404).end('{"message":"Not Found"}');
+      });
+    });
+    await new Promise<void>((r) => mock.listen(0, "127.0.0.1", r));
+    const cfg = loadConfig({ env: "test", inMemoryDb: true, webDist: undefined, allowPrivateNetwork: true });
+    cfg.providers = { ...cfg.providers, github: `http://127.0.0.1:${(mock.address() as AddressInfo).port}` };
+    app = await buildApp(cfg);
+  });
+  afterAll(async () => {
+    await app.close();
+    mock.close();
+  });
+
+  it("lists, reads and commits files; private repos and commits need a vault token", async () => {
+    const r = await app.inject({ method: "POST", url: "/api/auth/magic-link", headers: H, payload: { email: "gh@example.com" } });
+    const v = await app.inject({ method: "POST", url: "/api/auth/verify-code", headers: H, payload: { email: "gh@example.com", code: r.json().devCode } });
+    const h = { ...H, cookie: `mfc_session=${v.cookies.find((c) => c.name === "mfc_session")!.value}` };
+    const ws = (await app.inject({ method: "GET", url: "/api/auth/me", headers: h })).json().workspaces[0].id;
+    const post = (path: string, payload: unknown) => app.inject({ method: "POST", url: `/api/w/${ws}/github${path}`, headers: h, payload: payload as object });
+
+    const tree = (await post("/tree", { repo: "https://github.com/me/site.git" })).json();
+    expect(tree).toMatchObject({ repo: "me/site", ref: "main", canPush: false });
+    expect(tree.files).toEqual([{ path: "index.html", size: 120, editable: true }, { path: "img/logo.png", size: 9000, editable: false }]);
+    expect((await post("/file", { repo: "me/site", ref: "main", path: "index.html" })).json()).toMatchObject({ content: "<h1>Salom</h1>", sha: "abc" });
+    expect((await post("/tree", { repo: "me/secret" })).statusCode).toBe(404);
+    expect((await post("/commit", { repo: "me/site", path: "index.html", content: "x", message: "m" })).statusCode).toBe(400);
+    expect((await post("/tree", { repo: "not a repo" })).statusCode).toBe(400);
+
+    const sec = (await app.inject({ method: "POST", url: `/api/w/${ws}/secrets`, headers: h, payload: { name: "GITHUB_TOKEN", value: "ghp_test", environment: "development" } })).json().secret;
+    expect((await post("/tree", { repo: "me/secret", secretId: sec.id })).statusCode).toBe(404); // repo exists, tree mocked only for me/site
+    const c = (await post("/commit", { repo: "me/site", ref: "main", path: "index.html", content: "<h1>Salom dunyo</h1>", sha: "abc", message: "Update title", secretId: sec.id })).json();
+    expect(c).toMatchObject({ sha: "def", commit: "c1" });
+    expect(commits[0].auth).toBe("Bearer ghp_test");
+    expect(commits[0].body).toMatchObject({ message: "Update title", sha: "abc", branch: "main" });
+    expect(Buffer.from(commits[0].body.content, "base64").toString()).toBe("<h1>Salom dunyo</h1>");
+    expect((await app.inject({ method: "GET", url: `/api/w/${ws}/audit`, headers: h })).json().events.map((e: { action: string }) => e.action)).toContain("github.commit");
+  });
+});

@@ -479,3 +479,10 @@ html[data-scheme="dark"] .viz-root { --series-1: #3987e5; --series-2: #d95926; }
 .app-tile { gap: 8px; padding: 12px; border: 1px solid var(--mfc-border); border-radius: var(--mfc-radius); }
 /* Native shells: respect notches and home indicators */
 html.shell-mobile body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+
+/* GitHub repository editor */
+.gh-layout { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 12px; }
+.gh-files { max-height: 62vh; overflow: auto; gap: 1px; }
+.gh-files .list-item { text-align: left; border: 0; background: none; color: inherit; padding: 4px 6px; border-radius: 6px; }
+.gh-files .list-item:disabled { opacity: .45; cursor: default; }
+@media (max-width: 900px) { .gh-layout { grid-template-columns: 1fr; } .gh-files { max-height: 30vh; } }
