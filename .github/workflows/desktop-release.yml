@@ -27,8 +27,8 @@ jobs:
             args: ""
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
@@ -50,7 +50,13 @@ jobs:
           projectPath: apps/desktop
           tagName: desktop-v__VERSION__
           releaseName: Multi-functional Creator desktop v__VERSION__
-          releaseBody: Download the installer for your system below, open it, and enter your panel's address.
+          releaseBody: |
+            Download the installer for your system below, open it, and enter your panel's address.
+            Sign in with the 6-digit code from the sign-in email.
+
+            - **Windows:** `.msi` or `-setup.exe`. If SmartScreen warns, choose *More info → Run anyway* (the build isn't code-signed).
+            - **macOS:** `.dmg` (`aarch64` = Apple Silicon, `x64` = Intel). The first time, right-click the app → *Open*, or allow it in *System Settings → Privacy & Security*.
+            - **Linux:** `.deb` (Ubuntu/Debian), `.rpm` (Fedora) or `.AppImage` (any distro: make it executable and run).
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

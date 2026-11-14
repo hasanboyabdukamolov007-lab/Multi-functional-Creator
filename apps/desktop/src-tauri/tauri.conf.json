@@ -19,6 +19,16 @@
     "category": "DeveloperTool",
     "shortDescription": "Build panels, sites, apps, APIs and 3D scenes",
     "longDescription": "The desktop app for Multi-functional Creator: connect to your panel server and work in a native window with downloads, a tray icon and a remembered window layout.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "10.15"
+    }
   }
 }
