@@ -47,7 +47,19 @@ export const githubRoutes: FastifyPluginAsync = async (app) => {
     const b = parse(Repo, req.body);
     const meta = await gh(a.workspaceId, b.secretId, `/repos/${b.repo}`);
     const ref = b.ref || String(meta.default_branch ?? "main");
-    const tree = await gh(a.workspaceId, b.secretId, `/repos/${b.repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`);
+    // Branch names can contain "/" (e.g. feature/x): resolve them to a commit first, which the trees API always accepts.
+    let sha = /^[0-9a-f]{40}$/i.test(ref) ? ref : "";
+    const refPath = ref.split("/").map(encodeURIComponent).join("/");
+    for (const kind of sha ? [] : ["heads", "tags"]) {
+      const r = await gh(a.workspaceId, b.secretId, `/repos/${b.repo}/git/ref/${kind}/${refPath}`).catch(() => null);
+      const obj = r?.object as { sha?: string } | undefined;
+      if (obj?.sha) {
+        sha = obj.sha;
+        break;
+      }
+    }
+    if (!sha) throw badRequest(`Branch or tag "${ref}" not found in ${b.repo}`);
+    const tree = await gh(a.workspaceId, b.secretId, `/repos/${b.repo}/git/trees/${sha}?recursive=1`);
     const files = ((tree.tree as Array<{ path: string; type: string; size?: number }>) ?? [])
       .filter((x) => x.type === "blob")
       .map((x) => ({ path: x.path, size: x.size ?? 0, editable: EDITABLE.test(x.path) && (x.size ?? 0) <= MAX_FILE }));

@@ -225,7 +225,8 @@ describe("GitHub repository editor (mock GitHub)", () => {
         const priv = u.startsWith("/repos/me/secret");
         if (priv && rq.headers.authorization !== "Bearer ghp_test") return rs.writeHead(404).end('{"message":"Not Found"}');
         if (/^\/repos\/me\/(site|secret)$/.test(u)) return rs.end(JSON.stringify({ default_branch: "main", private: priv, permissions: { push: !!rq.headers.authorization } }));
-        if (u.startsWith("/repos/me/site/git/trees/main")) return rs.end(JSON.stringify({ truncated: false, tree: [{ path: "index.html", type: "blob", size: 120 }, { path: "img/logo.png", type: "blob", size: 9000 }, { path: "css", type: "tree" }] }));
+        if (u === "/repos/me/site/git/ref/heads/main" || u === "/repos/me/site/git/ref/heads/feature/new-look") return rs.end(JSON.stringify({ object: { sha: "c0ffee" } }));
+        if (u.startsWith("/repos/me/site/git/trees/c0ffee")) return rs.end(JSON.stringify({ truncated: false, tree: [{ path: "index.html", type: "blob", size: 120 }, { path: "img/logo.png", type: "blob", size: 9000 }, { path: "css", type: "tree" }] }));
         if (u.startsWith("/repos/me/site/contents/index.html") && rq.method === "GET") return rs.end(JSON.stringify({ type: "file", size: 20, sha: "abc", content: Buffer.from("<h1>Salom</h1>").toString("base64") }));
         if (u.startsWith("/repos/me/site/contents/") && rq.method === "PUT") {
           commits.push({ path: u, body: JSON.parse(body), auth: rq.headers.authorization });
@@ -255,12 +256,15 @@ describe("GitHub repository editor (mock GitHub)", () => {
     expect(tree).toMatchObject({ repo: "me/site", ref: "main", canPush: false });
     expect(tree.files).toEqual([{ path: "index.html", size: 120, editable: true }, { path: "img/logo.png", size: 9000, editable: false }]);
     expect((await post("/file", { repo: "me/site", ref: "main", path: "index.html" })).json()).toMatchObject({ content: "<h1>Salom</h1>", sha: "abc" });
+    expect((await post("/tree", { repo: "me/site", ref: "feature/new-look" })).json()).toMatchObject({ ref: "feature/new-look", files: expect.any(Array) });
+    expect((await post("/tree", { repo: "me/site", ref: "nope/branch" })).json().error).toMatch(/not found/);
     expect((await post("/tree", { repo: "me/secret" })).statusCode).toBe(404);
     expect((await post("/commit", { repo: "me/site", path: "index.html", content: "x", message: "m" })).statusCode).toBe(400);
     expect((await post("/tree", { repo: "not a repo" })).statusCode).toBe(400);
 
     const sec = (await app.inject({ method: "POST", url: `/api/w/${ws}/secrets`, headers: h, payload: { name: "GITHUB_TOKEN", value: "ghp_test", environment: "development" } })).json().secret;
-    expect((await post("/tree", { repo: "me/secret", secretId: sec.id })).statusCode).toBe(404); // repo exists, tree mocked only for me/site
+    // With the token the private repo opens; its branch isn't mocked, so the answer names the missing branch.
+    expect((await post("/tree", { repo: "me/secret", secretId: sec.id })).json().error).toMatch(/Branch or tag "main" not found/);
     const c = (await post("/commit", { repo: "me/site", ref: "main", path: "index.html", content: "<h1>Salom dunyo</h1>", sha: "abc", message: "Update title", secretId: sec.id })).json();
     expect(c).toMatchObject({ sha: "def", commit: "c1" });
     expect(commits[0].auth).toBe("Bearer ghp_test");
