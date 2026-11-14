@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parse, requirePerm, notFound, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
 import { snapshot } from "./collab.js";
+import { assertLimit } from "../lib/billing.js";
 
 export const PROJECT_KINDS = ["site", "panel", "app", "api", "scene3d", "db"] as const;
 
@@ -35,6 +36,7 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req) => {
     const a = requirePerm(req, "projects.write");
     const body = parse(CreateBody, req.body);
+    await assertLimit(app.deps, a.workspaceId, "projects");
     const id = crypto.randomUUID();
     const project = await db.one(
       `INSERT INTO projects (id, workspace_id, name, kind, data, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, kind, data, version, created_at, updated_at`,
@@ -81,6 +83,7 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
     const { name } = parse(z.object({ name: z.string().trim().min(1).max(120).optional() }), req.body ?? {});
     const src = await db.one<{ name: string; kind: string; data: unknown }>(`SELECT name, kind, data FROM projects WHERE id = $1 AND workspace_id = $2`, [id, a.workspaceId]);
     if (!src) throw notFound("Project not found");
+    await assertLimit(app.deps, a.workspaceId, "projects");
     const newId = crypto.randomUUID();
     const project = await db.one(
       `INSERT INTO projects (id, workspace_id, name, kind, data, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, kind, version, created_at, updated_at`,

@@ -3,6 +3,8 @@ import type { FastifyPluginAsync, FastifyReply } from "fastify";
 import { z } from "zod";
 import { parse, requirePerm, requireUser, notFound, badRequest, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
+import { notifyUser } from "../lib/push.js";
+import { assertLimit } from "../lib/billing.js";
 
 const COLORS = ["#e5484d", "#f76b15", "#ffc53d", "#30a46c", "#12a594", "#0090ff", "#6e56cf", "#d6409f"];
 const colorFor = (id: string) => COLORS[parseInt(crypto.createHash("md5").update(id).digest("hex").slice(0, 6), 16) % COLORS.length];
@@ -109,7 +111,8 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
     for (const uid of notifyIds) {
       const m = members.find((x) => x.id === uid);
-      await db.query(`INSERT INTO user_notifications (id, user_id, workspace_id, kind, title, body, link) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [crypto.randomUUID(), uid, a.workspaceId, mentioned.some((x) => x.id === uid) ? "mention" : "reply", `${who} ${mentioned.some((x) => x.id === uid) ? "mentioned you" : "replied"} in ${p.name}`, b.body.slice(0, 280), link]);
+      const isMention = mentioned.some((x) => x.id === uid);
+      await notifyUser(app.deps, { userId: uid, workspaceId: a.workspaceId, kind: isMention ? "mention" : "reply", title: `${who} ${isMention ? "mentioned you" : "replied"} in ${p.name}`, body: b.body.slice(0, 280), link });
       if (m) void mailer.send(m.email, `${who} mentioned you in ${p.name}`, `${b.body}\n\nOpen: ${config.publicUrl}${link}`).catch(() => undefined);
     }
     await audit(db, req, "comment.create", { targetType: "project", targetId: id, meta: { mentions: mentioned.length } });
@@ -187,6 +190,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     const p = await project(a.workspaceId, id);
     if (p.branch_of) throw badRequest("Branch from the main project, not from another branch");
     const { name } = parse(z.object({ name: z.string().trim().min(1).max(60) }), req.body);
+    await assertLimit(app.deps, a.workspaceId, "projects");
     const nid = crypto.randomUUID();
     const row = await db.one(
       `INSERT INTO projects (id, workspace_id, name, kind, data, created_by, branch_of, branch_name) SELECT $1, workspace_id, name || ' · ' || $3, kind, data, $4, id, $3 FROM projects WHERE id = $2 RETURNING id, name, kind, version`,

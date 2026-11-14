@@ -8,6 +8,7 @@ import { audit } from "../lib/audit.js";
 import { readValue, resolveForDeploy } from "../lib/secretsStore.js";
 import { deploy, testTarget, TARGET_KINDS, type DeployFile, type TargetKind } from "../lib/deployers.js";
 import { notify } from "../lib/notify.js";
+import { assertLimit } from "../lib/billing.js";
 
 const Config = z.record(z.string().max(64), z.string().max(2000)).default({});
 const TargetBody = z.object({
@@ -61,6 +62,7 @@ export const deployRoutes: FastifyPluginAsync = async (app) => {
   app.post("/targets", async (req) => {
     const a = requirePerm(req, "deploy.targets");
     const b = parse(TargetBody, req.body);
+    await assertLimit(app.deps, a.workspaceId, "deployTargets");
     await checkSecret(a.workspaceId, b.secretId);
     const id = crypto.randomUUID();
     await db.query(`INSERT INTO deploy_targets (id, workspace_id, name, kind, config, secret_id, environment, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [id, a.workspaceId, b.name, b.kind, JSON.stringify(b.config), b.secretId ?? null, b.environment, req.user!.id]);

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { can } from "@mfc/core";
 import { parse, requirePerm, notFound, badRequest, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
+import { assertLimit } from "../lib/billing.js";
 
 export const MARKET_KINDS = ["template", "scene", "schema", "api", "workflow", "brand", "plugin"] as const;
 export const PLUGIN_PERMISSIONS = ["builder.read", "builder.write", "studio.write", "toast", "storage", "http"] as const;
@@ -69,6 +70,7 @@ export const marketRoutes: FastifyPluginAsync = async (app) => {
     const { id } = req.params as { id: string };
     const item = await db.one<{ kind: (typeof MARKET_KINDS)[number]; name: string; data: Record<string, unknown> }>(`SELECT kind, name, data FROM market_items WHERE id = $1 AND (workspace_id = $2 OR visibility = 'public')`, [id, a.workspaceId]);
     if (!item) throw notFound("Item not found");
+    if (["template", "scene", "schema", "api"].includes(item.kind)) await assertLimit(app.deps, a.workspaceId, "projects");
     await db.query(`UPDATE market_items SET installs = installs + 1 WHERE id = $1`, [id]);
     await audit(db, req, "market.install", { targetType: "market_item", targetId: id, meta: { kind: item.kind } });
     const projectKind: Record<string, string> = { template: String(item.data.projectKind ?? "site"), scene: "scene3d", schema: "db", api: "api" };
@@ -94,6 +96,8 @@ export const marketRoutes: FastifyPluginAsync = async (app) => {
 
   // ------------------------------------------------------------------ plugins
   async function upsertPlugin(ws: string, userId: string, manifest: z.infer<typeof PluginManifest>, code: string) {
+    // Updating an installed plugin is always allowed; a new one counts against the plan.
+    if (!(await db.one(`SELECT 1 FROM plugins WHERE workspace_id = $1 AND slug = $2`, [ws, manifest.id]))) await assertLimit(app.deps, ws, "plugins");
     const row = await db.one<{ id: string }>(
       `INSERT INTO plugins (id, workspace_id, slug, manifest, code, installed_by) VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (workspace_id, slug) DO UPDATE SET manifest = EXCLUDED.manifest, code = EXCLUDED.code, updated_at = now() RETURNING id`,

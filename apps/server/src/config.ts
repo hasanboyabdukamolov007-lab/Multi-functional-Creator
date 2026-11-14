@@ -27,7 +27,13 @@ export interface Config {
   /** Shared secret for the scheduler tick endpoint (external cron / Vercel Cron). */
   cronSecret?: string;
   /** Provider API bases (overridable for self-hosted GitHub Enterprise, proxies and tests). */
-  providers: { vercel: string; netlify: string; github: string; telegram: string };
+  providers: { vercel: string; netlify: string; github: string; telegram: string; stripe: string; expoPush: string };
+  /** SaaS billing via Stripe. Off unless STRIPE_SECRET_KEY is set; without it every workspace is unlimited. */
+  billing: { stripeKey?: string; webhookSecret?: string; prices: { pro?: string; team?: string }; trialDays: number };
+  /** Web Push (VAPID). Keys are generated and stored in the database when not provided. */
+  vapid: { publicKey?: string; privateKey?: string; subject: string };
+  /** Download links shown on the Apps page (e.g. GitHub Releases, an APK or a store listing). */
+  downloads: { desktop?: string; android?: string; ios?: string };
   /** Run the in-process workflow scheduler (self-hosted). */
   scheduler: boolean;
   /** Running as a serverless function (Vercel): no local disk, so an external database is required. */
@@ -56,6 +62,24 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
       netlify: process.env.MFC_NETLIFY_API ?? "https://api.netlify.com",
       github: process.env.MFC_GITHUB_API ?? "https://api.github.com",
       telegram: process.env.MFC_TELEGRAM_API ?? "https://api.telegram.org",
+      stripe: process.env.MFC_STRIPE_API ?? "https://api.stripe.com",
+      expoPush: process.env.MFC_EXPO_PUSH_API ?? "https://exp.host",
+    },
+    billing: {
+      stripeKey: process.env.STRIPE_SECRET_KEY || undefined,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || undefined,
+      prices: { pro: process.env.STRIPE_PRICE_PRO || undefined, team: process.env.STRIPE_PRICE_TEAM || undefined },
+      trialDays: Number(process.env.STRIPE_TRIAL_DAYS ?? 0),
+    },
+    vapid: {
+      publicKey: process.env.VAPID_PUBLIC_KEY || undefined,
+      privateKey: process.env.VAPID_PRIVATE_KEY || undefined,
+      subject: process.env.VAPID_SUBJECT ?? "mailto:admin@localhost",
+    },
+    downloads: {
+      desktop: process.env.DESKTOP_DOWNLOAD_URL || undefined,
+      android: process.env.ANDROID_DOWNLOAD_URL || undefined,
+      ios: process.env.IOS_DOWNLOAD_URL || undefined,
     },
     scheduler: !onVercel && env !== "test" && process.env.SCHEDULER !== "0",
     vaultMasterKey: process.env.VAULT_MASTER_KEY || undefined,

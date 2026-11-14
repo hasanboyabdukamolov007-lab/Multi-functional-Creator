@@ -410,4 +410,39 @@ CREATE TABLE IF NOT EXISTS plugins (
   UNIQUE (workspace_id, slug)
 )`,
   },
+  {
+    id: 9,
+    name: "sign-in codes, push devices, billing",
+    sql: `
+ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS code_hash text;
+ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS push_devices (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  token text NOT NULL UNIQUE,
+  subscription jsonb,
+  label text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS push_devices_user ON push_devices (user_id);
+CREATE TABLE IF NOT EXISTS server_keys (
+  name text PRIMARY KEY,
+  value jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS stripe_customer_id text;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS plan_status text;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS plan_renews_at timestamptz;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS plan_cancel_at_period_end boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS workspaces_stripe_customer ON workspaces (stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS billing_events (
+  id text PRIMARY KEY,
+  type text NOT NULL,
+  workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
+  received_at timestamptz NOT NULL DEFAULT now()
+)`,
+  },
 ];

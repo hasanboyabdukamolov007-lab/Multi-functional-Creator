@@ -6,6 +6,7 @@ import { audit } from "../lib/audit.js";
 import { assertSafeUrl } from "../lib/netGuard.js";
 import { checkOnce, recordCheck, uptimeSummary } from "../lib/monitoring.js";
 import { CHANNEL_KINDS, EVENTS, sendToChannel } from "../lib/notify.js";
+import { assertLimit } from "../lib/billing.js";
 
 const MonitorBody = z.object({
   name: z.string().trim().min(1).max(80),
@@ -61,6 +62,7 @@ export const monitoringRoutes: FastifyPluginAsync = async (app) => {
     const a = requirePerm(req, "monitoring.manage");
     const b = parse(MonitorBody, req.body);
     guardUrl(b.url);
+    await assertLimit(app.deps, a.workspaceId, "monitors");
     const id = crypto.randomUUID();
     await db.query(`INSERT INTO monitors (id, workspace_id, name, url, method, interval_s, timeout_ms, expect_status, keyword, public, enabled) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [id, a.workspaceId, b.name, b.url, b.method, b.intervalS, b.timeoutMs, b.expectStatus ?? null, b.keyword ?? null, b.public, b.enabled]);
     await audit(db, req, "monitor.create", { targetType: "monitor", targetId: id, meta: { url: b.url } });
@@ -209,7 +211,7 @@ export const monitoringRoutes: FastifyPluginAsync = async (app) => {
     const ch = await db.one<{ id: string; kind: (typeof CHANNEL_KINDS)[number]; name: string; config: Record<string, string>; secret_id: string | null }>(`SELECT id, kind, name, config, secret_id FROM notification_channels WHERE id = $1 AND workspace_id = $2`, [(req.params as { id: string }).id, a.workspaceId]);
     if (!ch) throw notFound("Channel not found");
     try {
-      await sendToChannel(app.deps, ch, "test", { title: "Test notification", text: "If you can read this, the channel works.", url: config.publicUrl, level: "info" });
+      await sendToChannel(app.deps, { ...ch, config: { ...ch.config, workspaceId: a.workspaceId } }, "test", { title: "Test notification", text: "If you can read this, the channel works.", url: config.publicUrl, level: "info" });
       return { ok: true };
     } catch (e) {
       return { ok: false, message: (e as Error).message };

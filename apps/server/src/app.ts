@@ -27,6 +27,8 @@ import { monitoringRoutes } from "./routes/monitoring.js";
 import { assetPublicRoutes, assetRoutes, brandRoutes } from "./routes/assets.js";
 import { collabRoutes, notificationRoutes } from "./routes/collab.js";
 import { marketRoutes } from "./routes/market.js";
+import { billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
+import { pushRoutes } from "./routes/push.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -85,7 +87,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
     if (!req.url.startsWith("/api/")) return;
     if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
     // Webhooks and the cron tick are called by other servers and carry their own secret; no cookies involved.
-    if (req.url.startsWith("/api/hooks/") || req.url.startsWith("/api/cron/") || req.url === "/api/collect") return;
+    if (req.url.startsWith("/api/hooks/") || req.url.startsWith("/api/cron/") || req.url === "/api/collect" || req.url === "/api/billing/webhook") return;
     if (req.headers["x-mfc-csrf"] !== "1") throw new HttpError(403, "Missing CSRF header", "csrf");
   });
 
@@ -147,6 +149,18 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(notificationRoutes, { prefix: "/api" });
   await app.register(marketRoutes, { prefix: "/api/w/:workspaceId" });
   await app.register(publicRoutes, { prefix: "/api" });
+  await app.register(billingRoutes, { prefix: "/api/w/:workspaceId/billing" });
+  await app.register(billingWebhookRoutes, { prefix: "/api/billing" });
+  await app.register(pushRoutes, { prefix: "/api/push" });
+
+  // What the web, desktop and mobile clients need to know about this server.
+  app.get("/api/app-info", async () => ({
+    name: "Multi-functional Creator",
+    version: APP_VERSION,
+    billing: !!config.billing.stripeKey,
+    downloads: config.downloads,
+    signInCode: true,
+  }));
 
   if (config.scheduler) {
     const stop = startScheduler({ db, ring, mailer, config }, log);

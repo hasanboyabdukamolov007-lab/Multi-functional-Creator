@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { parse, requirePerm, notFound, badRequest, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
+import { assertLimit } from "../lib/billing.js";
 
 const MAX_FILE = 15 * 1024 * 1024;
 const QUOTA = 1024 * 1024 * 1024; // 1 GB per workspace
@@ -49,6 +50,7 @@ export const assetRoutes: FastifyPluginAsync = async (app) => {
     if (b.mime === "image/svg+xml" && /<script|\bon\w+\s*=|javascript:/i.test(data.toString("utf8"))) throw badRequest("SVG files with scripts aren't allowed");
     const [{ used }] = await db.query<{ used: string | null }>(`SELECT sum(size) AS used FROM assets WHERE workspace_id = $1`, [a.workspaceId]);
     if (Number(used ?? 0) + data.length > QUOTA) throw badRequest("Storage quota reached (1 GB)");
+    await assertLimit(app.deps, a.workspaceId, "storageMb", data.length);
     const sha = crypto.createHash("sha256").update(data).digest("hex");
     const existing = await db.one<{ id: string; name: string }>(`SELECT id, name FROM assets WHERE workspace_id = $1 AND sha256 = $2`, [a.workspaceId, sha]);
     if (existing) return { id: existing.id, url: assetUrl(existing.id, existing.name), deduplicated: true };
