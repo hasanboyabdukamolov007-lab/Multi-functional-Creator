@@ -12,6 +12,7 @@ import { Toasts } from "./Toasts";
 import { Onboarding } from "./Onboarding";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { ShortcutsHelp } from "./ShortcutsHelp";
+import { NotificationBell } from "./NotificationBell";
 import * as I from "../ui/icons";
 import { useCompact } from "../lib/media";
 import { usePwa } from "../lib/pwa";
@@ -72,6 +73,8 @@ export function Shell() {
       await m.useBrain.getState().load(workspaceId);
       tr.startLearning();
     });
+    // Workspace plugins: run sandboxed and add their functions to the palette and Forge.
+    void import("../modules/plugins/runtime").then((p) => p.loadPlugins()).catch(() => undefined);
   }, [workspaceId]);
   useEffect(() => setModule(moduleForPath(location.pathname).id), [location.pathname, setModule]);
   // On phones the sidebar overlays content: start collapsed and close it after navigating.
@@ -132,6 +135,7 @@ export function Shell() {
         <button className="icon-btn" title={theme.name} aria-label="Toggle light/dark theme" onClick={() => runFunction("theme.toggle-scheme")}>
           {theme.tokens.scheme === "dark" ? <I.IconMoon size={17} /> : <I.IconSun size={17} />}
         </button>
+        <NotificationBell />
         <button className={`btn ${copilotOpen ? "btn-primary" : ""}`} onClick={() => setCopilot(!copilotOpen)} title={`${t("shell.toggleCopilot")} (${prettyShortcut("mod+j")})`}>
           <I.IconSparkles size={15} /> <span className="hide-xs">Forge</span>
         </button>

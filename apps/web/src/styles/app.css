@@ -457,3 +457,12 @@ html[data-scheme="dark"] .viz-root { --series-1: #3987e5; --series-2: #d95926; }
 .track-key.active { background: #f2a93b; }
 .track-playhead { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--mfc-danger); }
 .lottie-stage { width: 100%; max-width: 560px; aspect-ratio: 1; border-radius: 12px; overflow: hidden; margin: 0 auto; }
+
+/* ---------- Collaboration ---------- */
+.avatar-stack { display: flex; }
+.avatar-dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; border: 2px solid var(--mfc-surface); margin-left: -6px; }
+.avatar-stack .avatar-dot:first-child { margin-left: 0; }
+.collab-drawer { position: fixed; top: 100px; right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); z-index: 60; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--mfc-shadow); }
+.collab-toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--mfc-elevated); border: 1px solid var(--mfc-warning); box-shadow: var(--mfc-shadow); font-size: 13px; }
+.mention-pop { position: absolute; bottom: 100%; left: 0; right: 0; padding: 4px; z-index: 2; }
+.bell-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--mfc-danger); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }

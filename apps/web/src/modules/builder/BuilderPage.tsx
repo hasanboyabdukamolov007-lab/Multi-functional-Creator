@@ -8,7 +8,8 @@ import { Canvas, DRAG_MIME, MOVE_MIME } from "./Canvas";
 import { Inspector } from "./Inspector";
 import { TEMPLATES } from "./templates";
 import type { BNode, SiteTokens } from "./model";
-import { projectsApi, type ProjectSummary } from "../../lib/projects";
+import { projectsApi, type ProjectKind, type ProjectSummary } from "../../lib/projects";
+import { CollabBar } from "../collab/CollabBar";
 import { NewProjectModal } from "../home/HomePage";
 import { runFunction } from "../../lib/registry";
 import { toast } from "../../lib/ui";
@@ -251,6 +252,17 @@ function Toolbar() {
         <option value="builder.export.expo">Expo / React Native (ZIP)</option>
         <option value="builder.export.json">Project JSON</option>
       </select>
+      {s.projectId && (
+        <CollabBar
+          projectId={s.projectId}
+          kind={s.projectKind as ProjectKind}
+          selection={s.selectedId}
+          isDirty={() => ["dirty", "saving", "error"].includes(useBuilder.getState().saveState)}
+          onRemoteSave={() => void useBuilder.getState().open(s.projectId!)}
+          onRestored={() => void useBuilder.getState().open(s.projectId!)}
+          onFocusNode={(id) => useBuilder.getState().select(id)}
+        />
+      )}
     </div>
   );
 }

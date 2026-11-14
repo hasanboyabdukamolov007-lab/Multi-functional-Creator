@@ -15,6 +15,7 @@ import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
 import { LIBRARY } from "./library";
+import { CollabBar } from "../collab/CollabBar";
 import { useCompact } from "../../lib/media";
 import { MobileTabs } from "../../ui/MobileTabs";
 
@@ -71,6 +72,17 @@ function Toolbar() {
         <option value="studio.export.png">PNG snapshot</option>
         <option value="studio.export.json">Scene JSON</option>
       </select>
+      {s.projectId && (
+        <CollabBar
+          projectId={s.projectId}
+          kind="scene3d"
+          selection={s.selectedId}
+          isDirty={() => ["dirty", "saving", "error"].includes(useStudio.getState().saveState)}
+          onRemoteSave={() => void useStudio.getState().open(s.projectId!)}
+          onRestored={() => void useStudio.getState().open(s.projectId!)}
+          onFocusNode={(id) => useStudio.getState().select(id)}
+        />
+      )}
     </div>
   );
 }

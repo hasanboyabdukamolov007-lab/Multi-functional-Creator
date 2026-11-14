@@ -30,18 +30,9 @@ export const MODULES: ModuleDef[] = [
   { id: "vault", path: "/vault", labelKey: "nav.vault", icon: I.IconVault, group: "ship", phase: 1, keywords: ["secrets", "keys", "tokens", "env"], component: lazy(() => import("./vault/VaultPage")) },
   { id: "deploy", path: "/deploy", labelKey: "nav.deploy", icon: I.IconDeploy, group: "ship", phase: 1, keywords: ["vercel", "netlify", "github", "s3", "ssh", "publish", "hosting", "release", "rollback"], component: lazy(() => import("./deploy/DeployPage")) },
   { id: "monitoring", path: "/monitoring", labelKey: "nav.monitoring", icon: I.IconMonitor, group: "ship", phase: 1, keywords: ["uptime", "analytics", "status", "errors", "vitals", "alerts", "telegram", "slack"], component: lazy(() => import("./monitoring/MonitoringPage")) },
-  {
-    id: "collab", path: "/collab", labelKey: "nav.collab", icon: I.IconCollab, group: "ecosystem", phase: 5, component: Planned,
-    plannedFeatures: ["Real-time co-editing with live cursors (Yjs CRDT)", "Comments and @mentions pinned to canvas or code", "Version history, branches and Git integration"],
-  },
-  {
-    id: "marketplace", path: "/marketplace", labelKey: "nav.marketplace", icon: I.IconMarket, group: "ecosystem", phase: 5, component: Planned,
-    plannedFeatures: ["Share and import components, templates and 3D assets across workspaces", "Publish packs to your team"],
-  },
-  {
-    id: "plugins", path: "/plugins", labelKey: "nav.plugins", icon: I.IconPlugins, group: "ecosystem", phase: 5, component: Planned,
-    plannedFeatures: ["Plugin SDK built on the same function registry the panel uses", "Install, enable and sandbox plugins per workspace"],
-  },
+  { id: "collab", path: "/collab", labelKey: "nav.collab", icon: I.IconCollab, group: "ecosystem", phase: 1, keywords: ["team", "comments", "mentions", "online", "activity", "versions", "branches"], component: lazy(() => import("./collab/CollabPage")) },
+  { id: "marketplace", path: "/marketplace", labelKey: "nav.marketplace", icon: I.IconMarket, group: "ecosystem", phase: 1, keywords: ["templates", "share", "install", "community", "packs"], component: lazy(() => import("./market/MarketPage")) },
+  { id: "plugins", path: "/plugins", labelKey: "nav.plugins", icon: I.IconPlugins, group: "ecosystem", phase: 1, keywords: ["extensions", "sdk", "addons", "plugin"], component: lazy(() => import("./plugins/PluginsPage")) },
   { id: "audit", path: "/audit", labelKey: "nav.audit", icon: I.IconAudit, group: "admin", phase: 1, keywords: ["log", "activity", "history"], component: lazy(() => import("./audit/AuditPage")) },
   { id: "settings", path: "/settings", labelKey: "nav.settings", icon: I.IconSettings, group: "admin", phase: 1, keywords: ["theme", "language", "members", "ai"], component: lazy(() => import("./settings/SettingsPage")) },
 ];
