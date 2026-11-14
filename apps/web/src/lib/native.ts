@@ -21,7 +21,20 @@ declare global {
 type NativeMessage =
   | { type: "push-token"; token: string; label?: string }
   | { type: "open"; link: string }
-  | { type: "saved"; name: string };
+  | { type: "shell-info"; platform: string; lock: boolean };
+
+export interface ShellInfo {
+  platform: string;
+  lock: boolean;
+}
+let shellInfo: ShellInfo | null = null;
+const infoListeners = new Set<(i: ShellInfo) => void>();
+/** What the mobile app reports about itself (platform, whether the biometric lock is on). */
+export function onShellInfo(fn: (i: ShellInfo) => void): () => void {
+  infoListeners.add(fn);
+  if (shellInfo) fn(shellInfo);
+  return () => infoListeners.delete(fn);
+}
 
 export const isMobileShell = () => typeof window !== "undefined" && !!window.ReactNativeWebView;
 export const isDesktopShell = () => typeof window !== "undefined" && !!window.__MFC_DESKTOP__;
@@ -50,6 +63,10 @@ export function initNative(navigate: (to: string) => void) {
       if (signedIn) void registerToken(msg);
       else pendingToken = msg;
     } else if (msg.type === "open" && msg.link.startsWith("/") && !msg.link.startsWith("//")) navigateFn?.(msg.link);
+    else if (msg.type === "shell-info") {
+      shellInfo = { platform: msg.platform, lock: msg.lock };
+      infoListeners.forEach((fn) => fn(shellInfo!));
+    }
   };
   postToNative({ type: "ready" });
 }

@@ -832,4 +832,7 @@ export const ru: Partial<Dict> = {
   "devices.testSent": "Отправлено на устройств: {n}",
   "mon.pushHelp": "Отправляет на телефоны и приложения всех участников с включённым push (Настройки → Устройства и приложения).",
   "mon.pushAdmins": "Только владельцы и администраторы",
+  "devices.thisApp": "Это приложение",
+  "devices.appLock": "Блокировать Face ID / отпечатком при открытии",
+  "devices.changeServer": "Сменить сервер",
 };

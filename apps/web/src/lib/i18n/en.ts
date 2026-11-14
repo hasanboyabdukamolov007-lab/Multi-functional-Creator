@@ -830,6 +830,9 @@ export const en = {
   "devices.testSent": "Sent to {n} device(s)",
   "mon.pushHelp": "Sends to every member's phones and installed apps that have push turned on (Settings → Devices & apps).",
   "mon.pushAdmins": "Only owners and admins",
+  "devices.thisApp": "This app",
+  "devices.appLock": "Lock with Face ID / fingerprint when opening the app",
+  "devices.changeServer": "Change server",
 };
 
 export type Dict = typeof en;

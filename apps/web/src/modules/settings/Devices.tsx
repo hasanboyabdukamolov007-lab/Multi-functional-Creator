@@ -5,7 +5,7 @@ import { useT } from "../../lib/i18n";
 import { copyText, toast } from "../../lib/ui";
 import { usePwa } from "../../lib/pwa";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "../../lib/push";
-import { isDesktopShell, isMobileShell } from "../../lib/native";
+import { isDesktopShell, isMobileShell, onShellInfo, postToNative, type ShellInfo } from "../../lib/native";
 import * as I from "../../ui/icons";
 
 interface PushDevice {
@@ -85,8 +85,20 @@ export default function Devices() {
   };
 
   const mobile = isMobileShell();
+  const [shell, setShell] = useState<ShellInfo | null>(null);
+  useEffect(() => (mobile ? onShellInfo(setShell) : undefined), [mobile]);
   return (
     <div className="col" style={{ gap: 16, maxWidth: 820 }}>
+      {mobile && (
+        <div className="card col" style={{ gap: 10 }}>
+          <div className="row" style={{ gap: 8 }}><I.IconPhone size={16} /><strong className="grow">{t("devices.thisApp")}</strong>{shell && <span className="badge">{shell.platform}</span>}</div>
+          <label className="row small" style={{ gap: 8 }}>
+            <input type="checkbox" checked={!!shell?.lock} onChange={(e) => postToNative({ type: "lock", enabled: e.target.checked })} />
+            {t("devices.appLock")}
+          </label>
+          <div className="row"><button className="btn btn-sm" onClick={() => postToNative({ type: "change-server" })}>{t("devices.changeServer")}</button></div>
+        </div>
+      )}
       {/* Install / get the apps */}
       <div className="card col" style={{ gap: 12 }}>
         <strong>{t("devices.apps")}</strong>

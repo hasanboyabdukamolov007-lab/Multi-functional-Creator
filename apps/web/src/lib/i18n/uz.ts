@@ -832,4 +832,7 @@ export const uz: Partial<Dict> = {
   "devices.testSent": "{n} ta qurilmaga yuborildi",
   "mon.pushHelp": "Push yoqilgan barcha a’zolarning telefonlari va ilovalariga yuboradi (Sozlamalar → Qurilmalar va ilovalar).",
   "mon.pushAdmins": "Faqat egalar va adminlar",
+  "devices.thisApp": "Shu ilova",
+  "devices.appLock": "Ilovani ochishda Face ID / barmoq izi bilan qulflash",
+  "devices.changeServer": "Serverni almashtirish",
 };

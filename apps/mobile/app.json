@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Multi-functional Creator",
+    "slug": "multi-functional-creator",
+    "scheme": "mfc",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0d0e13",
+    "ios": {
+      "bundleIdentifier": "app.mfc.creator",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": { "NSAllowsLocalNetworking": true },
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.mfc.creator",
+      "adaptiveIcon": {
+        "backgroundColor": "#6d5efc",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        { "image": "./assets/splash-icon.png", "imageWidth": 160, "resizeMode": "contain", "backgroundColor": "#0d0e13" }
+      ],
+      [
+        "expo-notifications",
+        { "icon": "./assets/notification-icon.png", "color": "#6d5efc", "defaultChannel": "default" }
+      ],
+      [
+        "expo-local-authentication",
+        { "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID to unlock the app." }
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        { "android": { "usesCleartextTraffic": true } }
+      ]
+    ]
+  }
+}
