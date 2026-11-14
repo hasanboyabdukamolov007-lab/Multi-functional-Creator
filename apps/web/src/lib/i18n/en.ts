@@ -888,6 +888,12 @@ export const en = {
   "tg.manual": "…or enter a chat id / @channel",
   "tg.connect": "Connect",
   "tg.connected": "Telegram connected — check the test message",
+  "mini.title": "Telegram Mini App: menu button",
+  "mini.help": "After deploying a page with the “Telegram Mini App shop” template, paste its https address: the bot's menu button will open your shop inside Telegram.",
+  "mini.url": "Mini App address (https)",
+  "mini.buttonText": "Button text",
+  "mini.connect": "Set on the bot",
+  "mini.done": "Done — open the bot and tap the menu button",
 };
 
 export type Dict = typeof en;

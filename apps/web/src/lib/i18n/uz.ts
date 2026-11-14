@@ -890,4 +890,10 @@ export const uz: Partial<Dict> = {
   "tg.manual": "…yoki chat id / @kanal kiriting",
   "tg.connect": "Ulash",
   "tg.connected": "Telegram ulandi — sinov xabarini tekshiring",
+  "mini.title": "Telegram Mini App: menyu tugmasi",
+  "mini.help": "“Telegram Mini App do‘kon” shabloni bilan sahifani deploy qilgach, uning https manzilini qo‘ying: botning menyu tugmasi do‘koningizni Telegram ichida ochadi.",
+  "mini.url": "Mini App manzili (https)",
+  "mini.buttonText": "Tugma matni",
+  "mini.connect": "Botga o‘rnatish",
+  "mini.done": "Tayyor — botni ochib menyu tugmasini bosing",
 };

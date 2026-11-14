@@ -87,7 +87,7 @@ export function registerBuilderFunctions() {
         const root = B().page().root;
         const nodes = tp.build();
         // Order forms work out of the box: create a form (sent to the first Telegram channel, if any) and wire it in.
-        const forms = nodes.filter((x) => x.type === "leadForm" && !x.props.endpoint);
+        const forms = nodes.filter((x) => (x.type === "leadForm" || x.type === "tgShop") && !x.props.endpoint);
         if (forms.length) {
           try {
             const { api } = await import("../../lib/api");

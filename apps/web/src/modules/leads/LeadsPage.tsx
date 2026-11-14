@@ -66,6 +66,40 @@ function TelegramWizard({ t, onDone, onClose }: { t: (k: string, v?: Record<stri
   );
 }
 
+/** Open the deployed Mini App from the bot's menu button. */
+function MiniAppCard({ t, channels }: { t: (k: string, v?: Record<string, string | number>) => string; channels: Channel[] }) {
+  const bots = channels.filter((c) => c.kind === "telegram");
+  const [channelId, setChannelId] = useState(bots[0]?.id ?? "");
+  const [url, setUrl] = useState("");
+  const [text, setText] = useState("Buyurtma");
+  const [busy, setBusy] = useState(false);
+  if (!bots.length) return null;
+  const go = async () => {
+    setBusy(true);
+    try {
+      const r = await api.post<{ link: string }>(ws("/telegram/menu-button"), { channelId: channelId || bots[0].id, url: url.trim(), text: text.trim() || "Buyurtma" });
+      toast(t("mini.done"), "success");
+      window.open(r.link, "_blank", "noopener");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="card col" style={{ gap: 8 }}>
+      <strong>{t("mini.title")}</strong>
+      <span className="hint">{t("mini.help")}</span>
+      <div className="row wrap" style={{ gap: 6 }}>
+        <select className="select" style={{ width: 200 }} value={channelId} onChange={(e) => setChannelId(e.target.value)} aria-label="Bot">{bots.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <input className="input grow" style={{ minWidth: 220 }} placeholder="https://mening-dokonim.vercel.app" value={url} onChange={(e) => setUrl(e.target.value)} aria-label={t("mini.url")} />
+        <input className="input" style={{ width: 130 }} value={text} maxLength={30} onChange={(e) => setText(e.target.value)} aria-label={t("mini.buttonText")} />
+        <button className="btn btn-primary" disabled={busy || !/^https:\/\//.test(url.trim())} onClick={() => void go()}>{t("mini.connect")}</button>
+      </div>
+    </div>
+  );
+}
+
 /** Orders and requests from client sites: forms that post to the panel and alert Telegram, plus a simple pipeline. */
 export default function LeadsPage() {
   const t = useT();
@@ -130,6 +164,7 @@ export default function LeadsPage() {
           </form>
         )}
 
+        <MiniAppCard t={t} channels={channels} />
         {forms.length === 0 && !adding && <div className="empty">{t("leads.noForms")}</div>}
         {forms.map((f) => (
           <div key={f.id} className="card col" style={{ gap: 8 }}>

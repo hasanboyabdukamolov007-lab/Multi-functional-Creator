@@ -47,6 +47,43 @@ export const EXTRA_COMPONENTS: ComponentDef[] = [
     },
   },
   {
+    type: "tgShop", label: "Telegram Mini App shop", category: "Forms", description: "Products + cart + order inside Telegram (Mini App). Orders arrive in Leads and Telegram.",
+    defaults: { title: "Menyu", products: "Osh|45000|https://images.unsplash.com/photo-1630409346824-4f0e7b080087?w=400\nSomsa|9000|\nLag'mon|38000|\nChoy|5000|", currency: "so'm", buttonText: "Buyurtma berish", endpoint: "" },
+    fields: [F.text("title", "Title"), F.lines("products", "Products", "One per line: Name|price|image URL (optional)"), F.text("currency", "Currency"), F.text("buttonText", "Order button text"), F.url("endpoint", "Form address (from the Leads page)")],
+    render: (p) => {
+      const items = lines(p.products).filter(Boolean).map((l) => { const [name, price, img] = l.split("|").map((x) => x.trim()); return { name, price: Number(price) || 0, img: img || "" }; });
+      const css = `.tgs{max-width:560px;margin:0 auto;padding:16px;font-family:inherit;color:var(--tg-theme-text-color,inherit)}.tgs h2{margin:0 0 12px}.tgs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.tgs-item{border:1px solid rgba(127,127,127,.25);border-radius:14px;padding:8px;display:grid;gap:4px;background:var(--tg-theme-secondary-bg-color,transparent)}.tgs-item img,.tgs-noimg{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:grid;place-items:center;font-size:32px;background:rgba(127,127,127,.12)}.tgs-name{font-weight:600}.tgs-price{opacity:.75;font-size:14px}.tgs-qty{display:flex;align-items:center;justify-content:space-between}.tgs-qty button{width:34px;height:34px;border-radius:10px;border:0;font-size:18px;background:var(--tg-theme-button-color,#6d5efc);color:var(--tg-theme-button-text-color,#fff);cursor:pointer}.tgs-form{display:grid;gap:8px;margin-top:14px}.tgs-form input,.tgs-form textarea{padding:12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);font:inherit;background:transparent;color:inherit}.tgs-total{font-weight:700;margin-top:10px}.tgs-send{padding:14px;border:0;border-radius:12px;font-weight:700;background:var(--tg-theme-button-color,#6d5efc);color:var(--tg-theme-button-text-color,#fff);cursor:pointer}.tgs-done{padding:24px;text-align:center;font-size:18px}`;
+      // Shown natively in the editor; the script (Telegram SDK + cart) only runs on the published page.
+      const js = `<script src="https://telegram.org/js/telegram-web-app.js"></script><script>(function(){var r=document.currentScript.closest(".tgs"),items=JSON.parse(r.dataset.items),q=items.map(function(){return 0}),cur=r.dataset.cur,tg=window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initData?Telegram.WebApp:null,send=r.querySelector(".tgs-send"),tot=r.querySelector(".tgs-total");
+function total(){return items.reduce(function(s,it,i){return s+it.price*q[i]},0)}
+function fmt(n){return n.toLocaleString("ru-RU")+" "+cur}
+function upd(){r.querySelectorAll(".tgs-item").forEach(function(el,i){el.querySelector("span").textContent=q[i]});tot.textContent="Jami: "+fmt(total());if(tg){total()>0?tg.MainButton.setText(r.dataset.btn+" · "+fmt(total())).show():tg.MainButton.hide()}}
+r.querySelectorAll(".tgs-qty button").forEach(function(b){b.onclick=function(){var i=+b.closest(".tgs-item").dataset.i;q[i]=Math.max(0,q[i]+(+b.dataset.d));if(tg&&tg.HapticFeedback)tg.HapticFeedback.selectionChanged();upd()}});
+function val(n){return(r.querySelector("[name="+n+"]").value||"").trim()}
+function order(){if(!total())return alert("Avval mahsulot tanlang");if(!val("Telefon"))return(tg?tg.showAlert("Telefon raqamingizni yozing"):alert("Telefon raqamingizni yozing"));var u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,body={Ism:val("Ism"),Telefon:val("Telefon"),Manzil:val("Manzil"),Buyurtma:items.map(function(it,i){return q[i]?it.name+" × "+q[i]:""}).filter(Boolean).join(", "),Jami:fmt(total())};if(u)body.Telegram=(u.username?"@"+u.username+" ":"")+"id "+u.id;
+if(tg)tg.MainButton.showProgress();fetch(r.dataset.endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(x){if(!x.ok)throw 0;r.innerHTML='<div class="tgs-done">✅ Buyurtmangiz qabul qilindi! Tez orada bog\\'lanamiz.</div>';if(tg){tg.MainButton.hide();setTimeout(function(){tg.close()},1800)}}).catch(function(){if(tg){tg.MainButton.hideProgress();tg.showAlert("Yuborilmadi, qayta urinib ko'ring")}else alert("Yuborilmadi, qayta urinib ko'ring")})}
+send.onclick=order;if(tg){tg.ready();tg.expand();send.style.display="none";tg.MainButton.onClick(order);var n=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(n)r.querySelector("[name=Ism]").value=[n.first_name,n.last_name].filter(Boolean).join(" ")}upd()})();</script>`;
+      return h("div", { class: "tgs", "data-endpoint": String(p.endpoint ?? ""), "data-cur": String(p.currency ?? "so'm"), "data-btn": String(p.buttonText ?? "Buyurtma"), "data-items": JSON.stringify(items) },
+        h("style", {}, css),
+        h("h2", {}, String(p.title ?? "")),
+        h("div", { class: "tgs-grid" }, ...items.map((it, i) => h("div", { class: "tgs-item", "data-i": String(i) },
+          it.img ? h("img", { src: it.img, alt: it.name, loading: "lazy" }) : h("div", { class: "tgs-noimg" }, "🍽"),
+          h("div", { class: "tgs-name" }, it.name),
+          h("div", { class: "tgs-price" }, `${it.price.toLocaleString("ru-RU")} ${String(p.currency ?? "so'm")}`),
+          h("div", { class: "tgs-qty" }, h("button", { type: "button", "data-d": "-1", "aria-label": "−" }, "−"), h("span", {}, "0"), h("button", { type: "button", "data-d": "1", "aria-label": "+" }, "+")),
+        ))),
+        h("div", { class: "tgs-form" },
+          h("div", { class: "tgs-total" }, `Jami: 0 ${String(p.currency ?? "so'm")}`),
+          h("input", { name: "Ism", placeholder: "Ismingiz", autocomplete: "name" }),
+          h("input", { name: "Telefon", type: "tel", placeholder: "+998 90 123 45 67", autocomplete: "tel" }),
+          h("textarea", { name: "Manzil", rows: 2, placeholder: "Manzil / izoh" }),
+          h("button", { type: "button", class: "tgs-send" }, String(p.buttonText ?? "Buyurtma")),
+        ),
+        { tag: "div", attrs: { hidden: true }, rawHtml: js },
+      );
+    },
+  },
+  {
     type: "payButton", label: "Payme / Click pay button", category: "Forms", description: "Pay-by-link button for Payme or Click (UZS)",
     defaults: { provider: "payme", text: "Payme orqali to'lash", merchantId: "", serviceId: "", amount: 100000, account: "order_id", accountValue: "1", variant: "primary" },
     fields: [F.sel("provider", "Provider", ["payme", "click"]), F.text("text", "Button text"), F.text("merchantId", "Merchant ID"), F.text("serviceId", "Click service ID (Click only)"), F.num("amount", "Amount (UZS)"), F.text("account", "Account field (Payme, e.g. order_id)"), F.text("accountValue", "Account / order value"), F.sel("variant", "Variant", ["primary", "secondary", "ghost"])],

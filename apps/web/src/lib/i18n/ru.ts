@@ -890,4 +890,10 @@ export const ru: Partial<Dict> = {
   "tg.manual": "…или введите chat id / @канал",
   "tg.connect": "Подключить",
   "tg.connected": "Telegram подключён — проверьте тестовое сообщение",
+  "mini.title": "Telegram Mini App: кнопка меню",
+  "mini.help": "Опубликовав страницу с шаблоном «Telegram Mini App», вставьте её https-адрес: кнопка меню бота откроет магазин прямо в Telegram.",
+  "mini.url": "Адрес Mini App (https)",
+  "mini.buttonText": "Текст кнопки",
+  "mini.connect": "Установить в бота",
+  "mini.done": "Готово — откройте бота и нажмите кнопку меню",
 };

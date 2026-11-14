@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { parse, requirePerm, HttpError, badRequest } from "../lib/http.js";
 import { guardedFetch } from "../lib/netGuard.js";
-import { addVersion, createSecret } from "../lib/secretsStore.js";
+import { addVersion, createSecret, readValue } from "../lib/secretsStore.js";
 import { audit } from "../lib/audit.js";
 
 const Token = z.string().trim().regex(/^\d{5,15}:[\w-]{30,60}$/, "That doesn't look like a bot token from @BotFather");
@@ -79,5 +79,19 @@ export const telegramRoutes: FastifyPluginAsync = async (app) => {
     ]);
     await audit(db, req, "telegram.connect", { meta: { bot: me.username } });
     return { channelId: id, name, bot: me.username };
+  });
+
+  /** Put a "web app" button in the bot's menu that opens the deployed Mini App (Telegram requires https). */
+  app.post("/menu-button", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req) => {
+    const a = requirePerm(req, "notifications.manage");
+    const b = parse(z.object({ channelId: z.string().uuid(), url: z.string().trim().url().max(500), text: z.string().trim().min(1).max(30).default("Buyurtma") }), req.body);
+    if (!b.url.startsWith("https://")) throw badRequest("Telegram opens Mini Apps only over https:// — deploy the site first and use its https address");
+    const ch = await db.one<{ secret_id: string | null }>(`SELECT secret_id FROM notification_channels WHERE id = $1 AND workspace_id = $2 AND kind = 'telegram'`, [b.channelId, a.workspaceId]);
+    if (!ch?.secret_id) throw badRequest("Pick a connected Telegram bot");
+    const token = await readValue(db, ring, ch.secret_id);
+    const me = (await tg(token, "getMe")) as { username: string };
+    await tg(token, "setChatMenuButton", { menu_button: { type: "web_app", text: b.text, web_app: { url: b.url } } });
+    await audit(db, req, "telegram.menu_button", { meta: { bot: me.username, url: b.url } });
+    return { ok: true, bot: me.username, link: `https://t.me/${me.username}` };
   });
 };

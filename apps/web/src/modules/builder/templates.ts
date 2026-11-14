@@ -202,6 +202,13 @@ export const UZ_TEMPLATES: Template[] = [
     ],
   },
   {
+    id: "uz-tg-miniapp",
+    name: "Telegram Mini App do'kon (o'zbekcha)",
+    description: "Telegram ichida ochiladigan menyu + savatcha + buyurtma; buyurtmalar Leads va Telegram'ga keladi",
+    tokens: { primary: "#2481cc", primaryText: "#ffffff" },
+    build: () => [n("tgShop", { title: "Menyu", products: "Osh|45000|\nSomsa|9000|\nLag'mon|38000|\nShashlik|25000|\nSalat|18000|\nChoy|5000|", currency: "so'm", buttonText: "Buyurtma berish", endpoint: "" })],
+  },
+  {
     id: "uz-clinic",
     name: "Klinika / stomatologiya (o'zbekcha)",
     description: "Xizmatlar, shifokorlar, narxlar, qabulga yozilish Telegram'ga",
