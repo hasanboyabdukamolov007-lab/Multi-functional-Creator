@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { collabApi, useLive, type Comment, type Version } from "./collabApi";
 import { useSession } from "../../lib/session";
@@ -15,16 +15,40 @@ const ago = (iso: string) => {
 
 /**
  * Collaboration controls for any editor: live avatars, teammates' selections, comments and history.
- * `selection` is the id the local user has selected; `onRemoteSave` runs when a teammate saved a newer version.
+ * `selection` is the id the local user has selected.
+ *
+ * When the server reports a new version: our own autosave → nothing happens (no reload, no flicker);
+ * a teammate's save while we have nothing unsaved → `onRemoteSave` brings it in place; a teammate's save
+ * that collides with our unsaved edits → a banner offers `onReload` (take theirs).
  */
-export function CollabBar({ projectId, kind, selection, isDirty, onRemoteSave, onRestored, onFocusNode }: { projectId: string; kind: ProjectKind; selection: string | null; isDirty: () => boolean; onRemoteSave: () => void; onRestored: () => void; onFocusNode?: (id: string) => void }) {
+export function CollabBar({ projectId, kind, selection, localVersion, saveState, onRemoteSave, onReload, onFocusNode }: { projectId: string; kind: ProjectKind; selection: string | null; localVersion: () => number; saveState: () => string; onRemoteSave: () => unknown; onReload: () => unknown; onFocusNode?: (id: string) => void }) {
   const t = useT();
   const [panel, setPanel] = useState<"comments" | "history" | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [stale, setStale] = useState(false);
+  const pending = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   const loadComments = () => void collabApi.comments(projectId).then(setComments).catch(() => setComments([]));
+  const check = (tries = 0) => {
+    timer.current = null;
+    const v = pending.current;
+    if (v <= localVersion()) return; // our own save (or older): already have it
+    const st = saveState();
+    // A save of ours is still in flight or about to start: it may be the very version we were told
+    // about. Look again once it settles.
+    if ((st === "saving" || st === "dirty") && tries < 40) {
+      timer.current = setTimeout(() => check(tries + 1), 500);
+      return;
+    }
+    if (st === "saved" || st === "idle") void Promise.resolve(onRemoteSave()).catch(() => undefined);
+    else setStale(true); // conflict / error: someone else's changes collide with ours
+  };
   const peers = useLive(projectId, selection, {
-    onVersion: () => (isDirty() ? setStale(true) : onRemoteSave()),
+    onVersion: (v) => {
+      pending.current = Math.max(pending.current, v);
+      if (!timer.current) check();
+    },
     onComments: loadComments,
   });
   useEffect(loadComments, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -46,12 +70,12 @@ export function CollabBar({ projectId, kind, selection, isDirty, onRemoteSave, o
       {stale && (
         <div className="collab-toast">
           <I.IconWarning size={14} /> {t("collab.stale")}
-          <button className="btn btn-sm btn-primary" onClick={() => (setStale(false), onRemoteSave())}>{t("pwa.reload")}</button>
+          <button className="btn btn-sm btn-primary" onClick={() => (setStale(false), void onReload())}>{t("pwa.reload")}</button>
           <button className="icon-btn" aria-label={t("common.close")} onClick={() => setStale(false)}><I.IconClose size={12} /></button>
         </div>
       )}
       {panel === "comments" && <CommentsDrawer projectId={projectId} comments={comments} selection={selection} reload={loadComments} onClose={() => setPanel(null)} onFocusNode={onFocusNode} />}
-      {panel === "history" && <HistoryDrawer projectId={projectId} kind={kind} onClose={() => setPanel(null)} onRestored={onRestored} />}
+      {panel === "history" && <HistoryDrawer projectId={projectId} kind={kind} onClose={() => setPanel(null)} onRestored={() => void onReload()} />}
     </>
   );
 }

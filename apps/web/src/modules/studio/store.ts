@@ -43,6 +43,8 @@ interface StudioState {
 
   selected: () => SceneObject | null;
   open: (projectId: string) => Promise<void>;
+  /** Bring in a newer saved version in place (see the builder's pullRemote). */
+  pullRemote: (opts?: { force?: boolean }) => Promise<boolean>;
   mutate: (fn: (doc: SceneCore) => void, coalesceKey?: string) => void;
   select: (id: string | null) => void;
   add: (obj: SceneObject, select?: boolean) => SceneObject;
@@ -127,6 +129,20 @@ export const useStudio = create<StudioState>((set, get) => {
     showStats: false,
 
     selected: () => get().doc.objects.find((o) => o.id === get().selectedId) ?? null,
+
+    pullRemote: async (opts = {}) => {
+      const pid = get().projectId;
+      if (!pid) return false;
+      if (!opts.force && get().saveState !== "saved" && get().saveState !== "idle") return false;
+      const p = await projectsApi.get<SceneDoc>(pid);
+      if (get().projectId !== pid || !isSceneDoc(p.data)) return false;
+      if (!opts.force && (p.version <= get().version || get().saveState !== "saved")) return false;
+      if (opts.force) autosave.cancel();
+      const { assets = {}, ...core } = p.data as SceneDoc;
+      const sel = get().selectedId;
+      set({ doc: core, assets, selectedId: sel && core.objects.some((o) => o.id === sel) ? sel : null, version: p.version, projectName: p.name, saveState: "saved", past: [], future: [] });
+      return true;
+    },
 
     open: (projectId) => {
       // Concurrent opens of the same project (e.g. a template action and the page mounting)

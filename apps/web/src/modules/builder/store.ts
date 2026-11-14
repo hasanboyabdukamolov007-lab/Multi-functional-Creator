@@ -33,6 +33,12 @@ interface BuilderState {
   page: () => BPage;
   selected: () => BNode | null;
   open: (projectId: string) => Promise<void>;
+  /**
+   * Bring in a newer version saved elsewhere (a teammate, another tab, a restore) without the loading
+   * screen: the page, selection and scroll stay put. Skips when there's nothing newer, or when local
+   * edits are pending unless `force` (which discards them). Returns whether anything changed.
+   */
+  pullRemote: (opts?: { force?: boolean }) => Promise<boolean>;
   close: () => void;
   mutate: (fn: (doc: BuilderDoc, page: BPage) => void, coalesceKey?: string) => void;
   select: (id: string | null) => void;
@@ -121,6 +127,23 @@ export const useBuilder = create<BuilderState>((set, get) => {
     selected: () => {
       const id = get().selectedId;
       return id ? findNode(get().page().root, id)?.node ?? null : null;
+    },
+
+    pullRemote: async (opts = {}) => {
+      const pid = get().projectId;
+      if (!pid) return false;
+      if (!opts.force && get().saveState !== "saved" && get().saveState !== "idle") return false;
+      const p = await projectsApi.get<BuilderDoc>(pid);
+      if (get().projectId !== pid || !validDoc(p.data)) return false;
+      if (!opts.force && (p.version <= get().version || get().saveState !== "saved")) return false;
+      if (opts.force) autosave.cancel();
+      const doc = p.data as BuilderDoc;
+      const pageId = doc.pages.some((x) => x.id === get().pageId) ? get().pageId : doc.pages[0].id;
+      const page = doc.pages.find((x) => x.id === pageId)!;
+      const sel = get().selectedId;
+      // Undo snapshots belong to the old document; undoing across someone else's save would erase it.
+      set({ doc, pageId, selectedId: sel && findNode(page.root, sel) ? sel : null, version: p.version, projectName: p.name, saveState: "saved", past: [], future: [] });
+      return true;
     },
 
     open: (projectId) => {

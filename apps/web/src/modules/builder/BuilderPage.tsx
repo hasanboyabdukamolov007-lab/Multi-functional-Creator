@@ -257,9 +257,10 @@ function Toolbar() {
           projectId={s.projectId}
           kind={s.projectKind as ProjectKind}
           selection={s.selectedId}
-          isDirty={() => ["dirty", "saving", "error"].includes(useBuilder.getState().saveState)}
-          onRemoteSave={() => void useBuilder.getState().open(s.projectId!)}
-          onRestored={() => void useBuilder.getState().open(s.projectId!)}
+          localVersion={() => useBuilder.getState().version}
+          saveState={() => useBuilder.getState().saveState}
+          onRemoteSave={() => useBuilder.getState().pullRemote()}
+          onReload={() => useBuilder.getState().pullRemote({ force: true })}
           onFocusNode={(id) => useBuilder.getState().select(id)}
         />
       )}

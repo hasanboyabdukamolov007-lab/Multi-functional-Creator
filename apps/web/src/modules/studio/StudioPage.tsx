@@ -77,9 +77,10 @@ function Toolbar() {
           projectId={s.projectId}
           kind="scene3d"
           selection={s.selectedId}
-          isDirty={() => ["dirty", "saving", "error"].includes(useStudio.getState().saveState)}
-          onRemoteSave={() => void useStudio.getState().open(s.projectId!)}
-          onRestored={() => void useStudio.getState().open(s.projectId!)}
+          localVersion={() => useStudio.getState().version}
+          saveState={() => useStudio.getState().saveState}
+          onRemoteSave={() => useStudio.getState().pullRemote()}
+          onReload={() => useStudio.getState().pullRemote({ force: true })}
           onFocusNode={(id) => useStudio.getState().select(id)}
         />
       )}

@@ -52,5 +52,11 @@ export function createAutosave(delay = 800) {
       timer = setTimeout(() => void flush(), delay);
     },
     flush,
+    /** Drop a scheduled save (the local changes are being replaced). */
+    cancel() {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      pending = null;
+    },
   };
 }

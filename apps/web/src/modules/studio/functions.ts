@@ -35,7 +35,17 @@ export function registerStudioFunctions() {
   const fns: AppFunction[] = [];
 
   // Add objects
-  for (const p of PRIMITIVES) fns.push({ id: `studio.add.${p}`, title: `Add ${p}`, category: "3D · Add", keywords: ["3d", "mesh", "primitive"], when: hasScene, run: () => S().add(makePrimitive(p)).id });
+  // Everyday names people search for ("add a cube", "ball", "donut") in en/uz/ru.
+  const ALSO: Partial<Record<(typeof PRIMITIVES)[number], string[]>> = {
+    box: ["cube", "kub", "куб"],
+    sphere: ["ball", "shar", "шар"],
+    cylinder: ["tube", "silindr", "цилиндр"],
+    cone: ["konus", "конус"],
+    torus: ["donut", "doughnut", "тор"],
+    plane: ["floor", "ground", "tekislik", "плоскость"],
+    capsule: ["pill", "kapsula", "капсула"],
+  };
+  for (const p of PRIMITIVES) fns.push({ id: `studio.add.${p}`, title: `Add ${p}`, category: "3D · Add", keywords: ["3d", "mesh", "primitive", ...(ALSO[p] ?? [])], when: hasScene, run: () => S().add(makePrimitive(p)).id });
   for (const sh of SHAPES) fns.push({ id: `studio.add.shape-${sh}`, title: `Add extruded ${sh} (bevelled)`, category: "3D · Add", keywords: ["3d", "extrude", "bevel", "shape"], when: hasScene, run: () => S().add(makeExtrude(sh)).id });
   for (const l of LIGHT_TYPES) fns.push({ id: `studio.add.light-${l}`, title: `Add ${l} light`, category: "3D · Add", keywords: ["3d", "light", "lighting"], when: hasScene, run: () => S().add(makeLight(l)).id });
   fns.push(
