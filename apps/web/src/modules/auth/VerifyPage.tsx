@@ -21,7 +21,9 @@ export default function VerifyPage() {
       .post("/api/auth/verify", { token })
       .then(async () => {
         await refresh();
-        navigate("/", { replace: true });
+        const next = sessionStorage.getItem("mfc.next");
+        sessionStorage.removeItem("mfc.next");
+        navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/", { replace: true });
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : t("common.error")));
   }, [params, navigate, refresh, t]);

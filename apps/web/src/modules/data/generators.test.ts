@@ -113,3 +113,25 @@ describe("project exporters", () => {
     expect(strFromU8(z["proj/b/c.txt"])).toBe("world");
   });
 });
+
+import { importSchema, mapColumnType, duplicateTable as dupTable } from "./sqlgen";
+describe("schema import", () => {
+  it("reverse-engineers types, keys and references and lays tables out by dependency", () => {
+    const s = importSchema(
+      [
+        { name: "public.orders", columns: [{ name: "id", type: "integer", nullable: false, pk: true, default: "nextval('orders_id_seq'::regclass)" }, { name: "user_id", type: "uuid", nullable: false, references: { table: "public.users", column: "id" } }, { name: "total", type: "numeric", nullable: true }] },
+        { name: "public.users", columns: [{ name: "id", type: "uuid", nullable: false, pk: true, default: "gen_random_uuid()" }, { name: "email", type: "character varying(120)", nullable: false }] },
+      ],
+      "postgres",
+    );
+    const orders = s.tables.find((t) => t.name === "orders")!;
+    const users = s.tables.find((t) => t.name === "users")!;
+    expect(orders.columns[0]).toMatchObject({ type: "serial", pk: true });
+    expect(orders.columns[1].references).toMatchObject({ table: "users", column: "id" });
+    expect(users.columns[1]).toMatchObject({ type: "varchar", length: 120, nullable: false });
+    expect(orders.x).toBeGreaterThan(users.x); // referenced tables sit to the left
+    expect(diffSql(s.applied!.tables, s.tables, "postgres")).toEqual([]); // imported = already applied
+    expect(mapColumnType("tinyint(1)").type).toBe("boolean");
+    expect(dupTable(s, users.id)!.name).toBe("users_copy");
+  });
+});

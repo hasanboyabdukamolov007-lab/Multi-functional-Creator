@@ -16,6 +16,7 @@ import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
 import { useCompact } from "../../lib/media";
 import { MobileTabs } from "../../ui/MobileTabs";
+import { ask, confirmDialog } from "../../ui/dialog";
 
 const CodePanel = lazy(() => import("./CodePanel"));
 
@@ -154,7 +155,7 @@ function PagesAndTokens() {
     <div style={{ padding: 10 }}>
       <div className="row">
         <div className="section-label grow">{t("builder.pages")}</div>
-        <button className="icon-btn" title="Add page" onClick={() => st.addPage(window.prompt("Page name", "New page") ?? "New page")}>
+        <button className="icon-btn" title="Add page" onClick={() => void ask(t("builder.pageName"), "New page").then((n) => n?.trim() && st.addPage(n.trim()))}>
           <I.IconPlus size={15} />
         </button>
       </div>
@@ -166,7 +167,7 @@ function PagesAndTokens() {
             <I.IconSettings size={13} />
           </button>
           {doc.pages.length > 1 && (
-            <button className="icon-btn" style={{ width: 22, height: 22 }} title="Delete page" onClick={(e) => (e.stopPropagation(), window.confirm(t("common.confirm")) && st.removePage(p.id))}>
+            <button className="icon-btn" style={{ width: 22, height: 22 }} title="Delete page" onClick={(e) => (e.stopPropagation(), void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && st.removePage(p.id)))}>
               <I.IconTrash size={13} />
             </button>
           )}

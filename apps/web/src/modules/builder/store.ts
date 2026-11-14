@@ -1,3 +1,4 @@
+import { trackUnsaved } from "../../lib/guards";
 import { create } from "zustand";
 import { createAutosave, projectsApi } from "../../lib/projects";
 import { toast } from "../../lib/ui";
@@ -389,3 +390,6 @@ export async function previewInNewTab() {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   if (!w) throw new Error("The browser blocked the preview window — allow pop-ups for this site.");
 }
+
+// Warn before closing the tab while edits are still on their way to the server.
+trackUnsaved("builder", () => ["dirty", "saving", "error"].includes(useBuilder.getState().saveState));

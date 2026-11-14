@@ -4,6 +4,12 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+/** Called when an API call returns 401 outside the auth endpoints (session expired or revoked). */
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorized = fn;
+}
+
 async function request<T>(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, {
     method,
@@ -13,8 +19,20 @@ async function request<T>(method: string, url: string, body?: unknown, signal?: 
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!res.ok) throw new ApiError(res.status, data.error ?? res.statusText, data.code);
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // Proxies and gateways answer with HTML pages (502/504); never crash on them.
+    if (!res.ok) throw new ApiError(res.status, res.status >= 500 ? `The server is unavailable (${res.status}). Try again in a moment.` : res.statusText || `HTTP ${res.status}`);
+    throw new ApiError(res.status, "The server sent an unexpected response");
+  }
+  if (!res.ok) {
+    // A session that expired mid-work: remember where the user was and go to sign-in.
+    if (res.status === 401 && !url.startsWith("/api/auth/")) onUnauthorized?.();
+    const id = typeof data.requestId === "string" ? ` (ref ${data.requestId})` : "";
+    throw new ApiError(res.status, `${(data.error as string) ?? res.statusText}${res.status >= 500 ? id : ""}`, data.code as string | undefined);
+  }
   return data as T;
 }
 

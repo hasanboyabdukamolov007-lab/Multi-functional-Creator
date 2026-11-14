@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useT, useI18n, relativeTime } from "../../lib/i18n";
 import { useSession, ws } from "../../lib/session";
@@ -7,6 +7,8 @@ import { registry, runFunction } from "../../lib/registry";
 import { editorPath, PROJECT_KINDS, projectsApi, type ProjectKind, type ProjectSummary } from "../../lib/projects";
 import { toast } from "../../lib/ui";
 import * as I from "../../ui/icons";
+import { ask, confirmDialog } from "../../ui/dialog";
+import { load, save } from "../../lib/storage";
 
 const KIND_ICON: Record<ProjectKind, typeof I.IconHome> = { site: I.IconGlobe, panel: I.IconHome, app: I.IconPhone, api: I.IconCode, scene3d: I.IconStudio, db: I.IconData };
 
@@ -72,6 +74,14 @@ export default function HomePage() {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [secrets, setSecrets] = useState<{ total: number; alerts: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [q, setQ] = useState("");
+  const [kind, setKind] = useState<"" | ProjectKind>("");
+  const [sort, setSort] = useState<"updated" | "name" | "created">(() => load("mfc.home.sort", "updated"));
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = (projects ?? []).filter((p) => (!kind || p.kind === kind) && (!needle || p.name.toLowerCase().includes(needle)));
+    return [...list].sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : sort === "created" ? b.created_at.localeCompare(a.created_at) : b.updated_at.localeCompare(a.updated_at)));
+  }, [projects, q, kind, sort]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -84,7 +94,7 @@ export default function HomePage() {
 
   const reload = () => projectsApi.list().then(setProjects).catch(() => setProjects([]));
   const renameProject = async (p: ProjectSummary) => {
-    const name = window.prompt(t("home.rename"), p.name)?.trim();
+    const name = (await ask(t("home.rename"), p.name))?.trim();
     if (!name || name === p.name) return;
     try {
       await projectsApi.rename(p.id, name);
@@ -103,7 +113,7 @@ export default function HomePage() {
     }
   };
   const deleteProject = async (p: ProjectSummary) => {
-    if (!window.confirm(t("home.deleteConfirm", { name: p.name }))) return;
+    if (!(await confirmDialog(t("home.deleteConfirm", { name: p.name }), { danger: true, ok: t("common.delete") }))) return;
     try {
       await projectsApi.remove(p.id);
       toast(t("home.deleted", { name: p.name }), "success");
@@ -164,14 +174,32 @@ export default function HomePage() {
           ))}
         </div>
 
-        <div className="section-label">{t("home.projects")}</div>
+        <div className="row wrap" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+          <div className="section-label" style={{ margin: 0 }}>{t("home.projects")}</div>
+          {(projects?.length ?? 0) > 0 && (
+            <div className="row wrap" style={{ gap: 6 }}>
+              <input className="input input-sm" style={{ width: 180 }} placeholder={t("common.search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.search")} />
+              <select className="select input-sm" style={{ width: 150 }} value={kind} onChange={(e) => setKind(e.target.value as ProjectKind | "")} aria-label={t("home.filterKind")}>
+                <option value="">{t("home.allKinds")}</option>
+                {PROJECT_KINDS.map((k) => <option key={k} value={k}>{t(`home.kind.${k}`)}</option>)}
+              </select>
+              <select className="select input-sm" style={{ width: 140 }} value={sort} onChange={(e) => (setSort(e.target.value as typeof sort), save("mfc.home.sort", e.target.value))} aria-label={t("home.sort")}>
+                <option value="updated">{t("home.sort.updated")}</option>
+                <option value="created">{t("home.sort.created")}</option>
+                <option value="name">{t("home.sort.name")}</option>
+              </select>
+            </div>
+          )}
+        </div>
         {projects === null ? (
           <div className="muted">{t("common.loading")}</div>
         ) : projects.length === 0 ? (
           <div className="empty">{t("home.empty")}</div>
+        ) : shown.length === 0 ? (
+          <div className="empty">{t("home.noMatch")}</div>
         ) : (
           <div className="grid-auto">
-            {projects.map((p) => {
+            {shown.map((p) => {
               const Icon = KIND_ICON[p.kind] ?? I.IconFolder;
               const open = () => navigate(editorPath(p.kind, p.id));
               return (

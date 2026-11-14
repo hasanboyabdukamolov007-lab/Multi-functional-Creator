@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ENVIRONMENTS, type Environment } from "@mfc/core";
 import { httpApi, toTable, curlFor, fetchFor, type HttpReq, type HttpRes, type SavedRequest } from "./dataApi";
 import { useBuilder } from "../builder/store";
@@ -6,7 +6,9 @@ import { n } from "../builder/model";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import { ApiError } from "../../lib/api";
+import { load, save as store } from "../../lib/storage";
 import * as I from "../../ui/icons";
+import { ask, confirmDialog } from "../../ui/dialog";
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 const BLANK: HttpReq = { method: "GET", url: "https://jsonplaceholder.typicode.com/users", headers: { Accept: "application/json" }, body: "", environment: "development" };
@@ -42,6 +44,8 @@ export default function ApiTester() {
   const [tab, setTab] = useState<"headers" | "body" | "code">("headers");
   const [resTab, setResTab] = useState<"body" | "headers">("body");
   const builderOpen = useBuilder((s) => !!s.projectId);
+  const [history, setHistory] = useState<Array<HttpReq & { at: string; status: number }>>(() => load("mfc.http.history", []));
+  const abort = useRef<AbortController | null>(null);
 
   const reload = () => httpApi.list().then(setSaved).catch(() => setSaved([]));
   useEffect(() => {
@@ -51,17 +55,23 @@ export default function ApiTester() {
   const send = async () => {
     setBusy(true);
     setError(null);
+    abort.current = new AbortController();
     try {
-      setRes(await httpApi.send(req));
+      const r = await httpApi.send(req, abort.current.signal);
+      setRes(r);
+      const next = [{ ...req, at: new Date().toISOString(), status: r.status }, ...history.filter((h) => !(h.method === req.method && h.url === req.url))].slice(0, 30);
+      setHistory(next);
+      store("mfc.http.history", next.map((h) => ({ ...h, body: h.body.slice(0, 4000) })));
     } catch (e) {
       setRes(null);
-      setError(e instanceof ApiError ? e.message : (e as Error).message);
+      setError((e as Error).name === "AbortError" ? t("data.cancelled") : e instanceof ApiError ? e.message : (e as Error).message);
     } finally {
       setBusy(false);
+      abort.current = null;
     }
   };
   const save = async (asNew: boolean) => {
-    const name = asNew || !current.id ? window.prompt(t("data.requestName"), current.name || `${req.method} ${req.url.replace(/^https?:\/\//, "").slice(0, 40)}`)?.trim() : current.name;
+    const name = asNew || !current.id ? (await ask(t("data.requestName"), current.name || `${req.method} ${req.url.replace(/^https?:\/\//, "").slice(0, 40)}`))?.trim() : current.name;
     if (!name) return;
     try {
       if (current.id && !asNew) await httpApi.update(current.id, { ...req, name });
@@ -100,11 +110,19 @@ export default function ApiTester() {
         </div>
         <div className="panel-body" style={{ padding: 6 }}>
           {saved.length === 0 && <div className="hint" style={{ padding: 8 }}>{t("data.noSaved")}</div>}
+          {history.length > 0 && <div className="section-label" style={{ padding: "10px 8px 4px" }}>{t("data.history")}</div>}
+          {history.slice(0, 12).map((h, i) => (
+            <div key={`h${i}`} className="list-item small" title={h.url} onClick={() => (setCurrent({ id: null, name: "" }), setReq({ method: h.method, url: h.url, headers: h.headers, body: h.body, environment: h.environment }), setRes(null))}>
+              <span className={`badge method-${h.method.toLowerCase()}`}>{h.method}</span>
+              <span className="grow ellipsis mono">{h.url.replace(/^https?:\/\//, "")}</span>
+              <span className={`small ${h.status < 400 ? "muted" : ""}`} style={{ color: h.status >= 400 ? "var(--mfc-danger)" : undefined }}>{h.status}</span>
+            </div>
+          ))}
           {saved.map((s) => (
             <div key={s.id} className={`list-item ${current.id === s.id ? "selected" : ""}`} onClick={() => (setCurrent({ id: s.id, name: s.name }), setReq({ method: s.method, url: s.url, headers: s.headers, body: s.body, environment: s.environment }), setRes(null))}>
               <span className={`badge method-${s.method.toLowerCase()}`}>{s.method}</span>
               <span className="grow ellipsis">{s.name}</span>
-              <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); if (window.confirm(t("common.confirm"))) void httpApi.remove(s.id).then(reload); }}><I.IconTrash size={12} /></button>
+              <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && httpApi.remove(s.id).then(reload)); }}><I.IconTrash size={12} /></button>
             </div>
           ))}
         </div>
@@ -118,7 +136,11 @@ export default function ApiTester() {
           <select className="select" style={{ width: 140 }} value={req.environment} onChange={(e) => setReq({ ...req, environment: e.target.value as Environment })} title={t("data.secretEnv")} aria-label={t("data.secretEnv")}>
             {ENVIRONMENTS.map((e) => <option key={e} value={e}>{t(`vault.env.${e}`)}</option>)}
           </select>
-          <button className="btn btn-primary" disabled={busy || !req.url.trim()} onClick={() => void send()}>{busy ? <I.IconSpinner size={14} className="spin" /> : <I.IconSend size={14} />} {t("data.send")}</button>
+          {busy ? (
+            <button className="btn btn-danger" onClick={() => abort.current?.abort()}><I.IconCircleStop size={14} /> {t("common.cancel")}</button>
+          ) : (
+            <button className="btn btn-primary" disabled={!req.url.trim()} onClick={() => void send()}><I.IconSend size={14} /> {t("data.send")}</button>
+          )}
           <button className="btn" onClick={() => void save(false)}><I.IconSave size={14} /> {t("common.save")}</button>
           {current.id && <button className="btn btn-ghost" onClick={() => void save(true)}>{t("data.saveAs")}</button>}
         </div>

@@ -9,7 +9,9 @@ import { downloadText } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import { runFunction } from "../../lib/registry";
+import { load, save } from "../../lib/storage";
 import * as I from "../../ui/icons";
+import { confirmDialog } from "../../ui/dialog";
 
 const MONGO_TEMPLATE = JSON.stringify({ collection: "users", op: "find", filter: {}, limit: 50 }, null, 2);
 
@@ -27,6 +29,7 @@ export default function DataBrowser() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: "", kind: "postgres" as Connection["kind"], secretId: "" });
   const builderOpen = useBuilder((s) => !!s.projectId);
@@ -44,18 +47,24 @@ export default function DataBrowser() {
     setSchema(null);
     setSchemaError(null);
     setQuery(c.kind === "mongodb" ? MONGO_TEMPLATE : "SELECT 1;");
+    setHistory(load<string[]>(`mfc.qhist.${c.id}`, []));
     dataApi.schema(c.id).then(setSchema).catch((e: Error) => setSchemaError(e.message));
   };
 
   const run = async () => {
     if (!active) return;
-    if (!readOnly && !window.confirm(t("data.writeConfirm"))) return;
+    if (!readOnly && !(await confirmDialog(t("data.writeConfirm"), { danger: true }))) return;
     setBusy(true);
     setError(null);
     try {
       let mongo: unknown;
       if (active.kind === "mongodb") mongo = JSON.parse(query);
       setResult(await dataApi.query(active.id, active.kind === "mongodb" ? { mongo, readOnly } : { sql: query, readOnly }));
+      // Remember the last 25 distinct queries per connection (this device only).
+      const key = `mfc.qhist.${active.id}`;
+      const next = [query.trim(), ...load<string[]>(key, []).filter((x) => x !== query.trim())].slice(0, 25);
+      save(key, next);
+      setHistory(next);
     } catch (e) {
       setResult(null);
       setError((e as Error).message);
@@ -127,7 +136,7 @@ export default function DataBrowser() {
                 <I.IconData size={14} className="muted" />
                 <span className="grow ellipsis">{c.name}</span>
                 <span className="badge">{c.kind}</span>
-                {can(role, "data.connect") && <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); if (window.confirm(t("common.confirm"))) void dataApi.removeConnection(c.id).then(() => (setActive(null), reload())); }}><I.IconTrash size={12} /></button>}
+                {can(role, "data.connect") && <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && dataApi.removeConnection(c.id).then(() => (setActive(null), reload()))); }}><I.IconTrash size={12} /></button>}
               </div>
               {active?.id === c.id && (
                 <div style={{ paddingLeft: 14 }}>
@@ -166,6 +175,12 @@ export default function DataBrowser() {
                 <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} /> {t("data.readOnly")}
               </label>
               {!readOnly && <span className="badge badge-warning">{t("data.writesEnabled")}</span>}
+              {history.length > 0 && (
+                <select className="select input-sm" style={{ width: 170 }} value="" onChange={(e) => e.target.value && setQuery(e.target.value)} aria-label={t("data.history")}>
+                  <option value="">{t("data.history")} ({history.length})</option>
+                  {history.map((h, i) => <option key={i} value={h}>{h.replace(/\s+/g, " ").slice(0, 70)}</option>)}
+                </select>
+              )}
               <div className="grow" />
               {result && (
                 <>

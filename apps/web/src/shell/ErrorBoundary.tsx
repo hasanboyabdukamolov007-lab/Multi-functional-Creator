@@ -9,14 +9,15 @@ interface Props {
 }
 interface State {
   error: Error | null;
+  copied: boolean;
 }
 
 /** Keeps one broken module from blanking the whole panel. */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, copied: false };
 
   static getDerivedStateFromError(error: Error): State {
-    return { error };
+    return { error, copied: false };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -24,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prev: Props) {
-    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null });
+    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null, copied: false });
   }
 
   render() {
@@ -37,8 +38,18 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="muted small">{t("error.body")}</p>
           <code className="small" style={{ whiteSpace: "pre-wrap", color: "var(--mfc-danger)" }}>{this.state.error.message}</code>
           <div className="row">
-            <button className="btn btn-primary" onClick={() => this.setState({ error: null })}>{t("error.retry")}</button>
+            <button className="btn btn-primary" onClick={() => this.setState({ error: null, copied: false })}>{t("error.retry")}</button>
             <button className="btn" onClick={() => window.location.reload()}>{t("error.reload")}</button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                const e = this.state.error!;
+                const details = [`${e.name}: ${e.message}`, `URL: ${location.pathname}${location.search}`, `When: ${new Date().toISOString()}`, `Browser: ${navigator.userAgent}`, "", e.stack ?? ""].join("\n");
+                void navigator.clipboard?.writeText(details).then(() => this.setState({ copied: true }));
+              }}
+            >
+              {this.state.copied ? "✓" : t("error.copy")}
+            </button>
           </div>
         </div>
       </div>

@@ -38,6 +38,8 @@ declare module "fastify" {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export const APP_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.APP_VERSION ?? "dev";
+
 export async function buildApp(config: Config, injected: Partial<AppDeps> = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: config.env === "test" ? false : { level: config.env === "production" ? "info" : "debug", redact: ["req.headers.cookie", "req.headers.authorization"] },
@@ -67,7 +69,8 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
     const status = (err as { statusCode?: number }).statusCode;
     if (status && status < 500) return reply.status(status).send({ error: (err as Error).message });
     app.log.error(err);
-    return reply.status(500).send({ error: "Internal server error" });
+    // The request id ties a user's error report to the exact log line.
+    return reply.status(500).send({ error: "Internal server error", requestId: _req.id });
   });
 
   // CSRF defence: state-changing API calls must carry a custom header, which browsers only send
@@ -106,7 +109,18 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
     req.access = { workspaceId: m[1], role: row.role };
   });
 
-  app.get("/api/health", async () => ({ ok: true, db: db.kind, time: new Date().toISOString() }));
+  const started = Date.now();
+  app.get("/api/health", async (_req, reply) => {
+    const t0 = performance.now();
+    let dbOk = true;
+    try {
+      await db.query("SELECT 1");
+    } catch {
+      dbOk = false;
+    }
+    if (!dbOk) reply.status(503);
+    return { ok: dbOk, db: db.kind, dbMs: Math.round((performance.now() - t0) * 10) / 10, version: APP_VERSION, uptimeS: Math.round((Date.now() - started) / 1000), time: new Date().toISOString() };
+  });
 
   await app.register(authRoutes, { prefix: "/api/auth" });
   await app.register(workspaceRoutes, { prefix: "/api" });

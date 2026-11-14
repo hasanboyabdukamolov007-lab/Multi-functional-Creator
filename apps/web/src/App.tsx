@@ -1,18 +1,37 @@
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { MODULES } from "./modules";
 import { Shell } from "./shell/Shell";
 import { useSession } from "./lib/session";
-import { useT } from "./lib/i18n";
+import { useT, translate, useI18n } from "./lib/i18n";
+import { setUnauthorizedHandler } from "./lib/api";
+import { toast } from "./lib/ui";
 
 const LoginPage = lazy(() => import("./modules/auth/LoginPage"));
 const VerifyPage = lazy(() => import("./modules/auth/VerifyPage"));
+
+function NotFound() {
+  const t = useT();
+  return (
+    <div className="page">
+      <div className="empty" style={{ maxWidth: 520, margin: "10vh auto" }}>
+        <div style={{ fontSize: 48, fontWeight: 800 }}>404</div>
+        <p style={{ margin: "8px 0 16px" }}>{t("notFound.body")}</p>
+        <Link className="btn btn-primary" to="/">{t("notFound.home")}</Link>
+      </div>
+    </div>
+  );
+}
 
 function Protected({ children }: { children: React.ReactNode }) {
   const status = useSession((s) => s.status);
   const t = useT();
   if (status === "loading") return <div className="auth-wrap muted">{t("common.loading")}</div>;
-  if (status === "anon") return <Navigate to="/login" replace />;
+  if (status === "anon") {
+    const here = location.pathname + location.search;
+    if (here !== "/" && !here.startsWith("/login")) sessionStorage.setItem("mfc.next", here);
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -20,6 +39,11 @@ export default function App() {
   const refresh = useSession((s) => s.refresh);
   useEffect(() => {
     void refresh();
+    setUnauthorizedHandler(() => {
+      if (useSession.getState().status !== "ready") return;
+      toast(translate(useI18n.getState().locale, "auth.expired"), "warning");
+      void refresh();
+    });
   }, [refresh]);
 
   return (
@@ -39,7 +63,7 @@ export default function App() {
               const C = m.component!;
               return <Route key={m.id} path={m.path === "/" ? "/" : `${m.path}/*`} element={<C />} />;
             })}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>

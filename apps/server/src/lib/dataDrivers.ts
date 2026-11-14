@@ -14,7 +14,7 @@ export interface QueryResult {
 }
 export interface SchemaTable {
   name: string;
-  columns: Array<{ name: string; type: string; nullable: boolean }>;
+  columns: Array<{ name: string; type: string; nullable: boolean; pk?: boolean; default?: string | null; references?: { table: string; column: string } | null }>;
 }
 
 const MAX_ROWS = 1000;
@@ -142,12 +142,26 @@ async function runMongo(db: import("mongodb").Db, cmd: MongoCommand, readOnly: b
 
 export async function readSchema(kind: DataKind, url: string): Promise<SchemaTable[]> {
   if (kind === "postgres") {
-    const r = await runQuery(kind, url, { sql: `SELECT table_schema || '.' || table_name, column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema NOT IN ('pg_catalog','information_schema') ORDER BY table_schema, table_name, ordinal_position` }, true);
-    return group(r.rows as string[][]);
+    const r = await runQuery(kind, url, {
+      sql: `SELECT c.table_schema || '.' || c.table_name, c.column_name, c.data_type, c.is_nullable, c.column_default,
+        EXISTS (SELECT 1 FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage k ON k.constraint_name = tc.constraint_name AND k.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = c.table_schema AND tc.table_name = c.table_name AND k.column_name = c.column_name) AS pk,
+        (SELECT ccu.table_schema || '.' || ccu.table_name || '|' || ccu.column_name FROM information_schema.table_constraints tc
+           JOIN information_schema.key_column_usage k ON k.constraint_name = tc.constraint_name AND k.table_schema = tc.table_schema
+           JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name AND ccu.constraint_schema = tc.table_schema
+          WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = c.table_schema AND tc.table_name = c.table_name AND k.column_name = c.column_name LIMIT 1) AS ref
+      FROM information_schema.columns c WHERE c.table_schema NOT IN ('pg_catalog','information_schema') ORDER BY c.table_schema, c.table_name, c.ordinal_position`,
+    }, true);
+    return group(r.rows as unknown[][]);
   }
   if (kind === "mysql") {
-    const r = await runQuery(kind, url, { sql: `SELECT table_name, column_name, column_type, is_nullable FROM information_schema.columns WHERE table_schema = DATABASE() ORDER BY table_name, ordinal_position` }, true);
-    return group(r.rows as string[][]);
+    const r = await runQuery(kind, url, {
+      sql: `SELECT c.table_name, c.column_name, c.column_type, c.is_nullable, c.column_default, c.column_key = 'PRI',
+        (SELECT CONCAT(k.referenced_table_name, '|', k.referenced_column_name) FROM information_schema.key_column_usage k
+          WHERE k.table_schema = c.table_schema AND k.table_name = c.table_name AND k.column_name = c.column_name AND k.referenced_table_name IS NOT NULL LIMIT 1)
+      FROM information_schema.columns c WHERE c.table_schema = DATABASE() ORDER BY c.table_name, c.ordinal_position`,
+    }, true);
+    return group(r.rows as unknown[][]);
   }
   const { MongoClient } = await import("mongodb");
   const client = new MongoClient(url, { serverSelectionTimeoutMS: 8000 });
@@ -166,11 +180,20 @@ export async function readSchema(kind: DataKind, url: string): Promise<SchemaTab
   }
 }
 
-function group(rows: string[][]): SchemaTable[] {
+function group(rows: unknown[][]): SchemaTable[] {
   const map = new Map<string, SchemaTable>();
-  for (const [table, column, type, nullable] of rows) {
-    if (!map.has(table)) map.set(table, { name: table, columns: [] });
-    map.get(table)!.columns.push({ name: column, type, nullable: String(nullable).toUpperCase() === "YES" });
+  for (const [table, column, type, nullable, def, pk, ref] of rows) {
+    const t = String(table);
+    if (!map.has(t)) map.set(t, { name: t, columns: [] });
+    const [rt, rc] = typeof ref === "string" && ref.includes("|") ? ref.split("|") : [null, null];
+    map.get(t)!.columns.push({
+      name: String(column),
+      type: String(type),
+      nullable: String(nullable).toUpperCase() === "YES",
+      pk: pk === true || pk === 1 || pk === "1" || pk === "t",
+      default: def == null ? null : String(def),
+      references: rt && rc ? { table: rt, column: rc } : null,
+    });
   }
   return [...map.values()];
 }

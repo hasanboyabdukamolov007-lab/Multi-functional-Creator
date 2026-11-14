@@ -94,6 +94,9 @@ interface ThemeState {
   saveCustom: (name: string, tokens: ThemeTokens) => Theme;
   removeCustom: (id: string) => void;
   importTheme: (json: string) => Theme;
+  /** Pick dark/light automatically from the device setting (phones switching at sunset, etc.). */
+  followSystem: boolean;
+  setFollowSystem: (v: boolean) => void;
 }
 
 export const useTheme = create<ThemeState>((set, get) => ({
@@ -104,7 +107,14 @@ export const useTheme = create<ThemeState>((set, get) => ({
   active: () => get().all().find((t) => t.id === get().activeId) ?? BUILT_IN_THEMES[0],
   setActive: (id) => {
     save("mfc.theme", id);
-    set({ activeId: id, draft: null });
+    save("mfc.theme.system", false);
+    set({ activeId: id, draft: null, followSystem: false });
+  },
+  followSystem: load("mfc.theme.system", false),
+  setFollowSystem: (v) => {
+    save("mfc.theme.system", v);
+    set({ followSystem: v });
+    if (v) syncWithSystem();
   },
   setDraft: (draft) => set({ draft }),
   saveCustom: (name, tokens) => {
@@ -131,3 +141,16 @@ export const useTheme = create<ThemeState>((set, get) => ({
 
 // Keep the document in sync with the active theme / live draft.
 useTheme.subscribe((s) => applyTheme(s.draft ?? s.active().tokens));
+
+const SYSTEM_DARK = "midnight-pro";
+const SYSTEM_LIGHT = "daylight";
+function syncWithSystem() {
+  if (typeof window === "undefined" || !useTheme.getState().followSystem) return;
+  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const id = dark ? SYSTEM_DARK : SYSTEM_LIGHT;
+  if (useTheme.getState().activeId !== id) useTheme.setState({ activeId: id, draft: null });
+}
+if (typeof window !== "undefined") {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncWithSystem);
+  syncWithSystem();
+}

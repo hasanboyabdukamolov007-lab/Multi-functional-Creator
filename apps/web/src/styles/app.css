@@ -279,3 +279,7 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
 /* Toolbars scroll sideways on small screens instead of squashing their controls. */
 .toolbar > * { flex-shrink: 0; }
 .toolbar > .grow { flex-shrink: 1; min-width: 0; }
+.offline-bar { background: color-mix(in srgb, var(--mfc-warning) 18%, transparent); }
+.skip-link { position: absolute; left: 8px; top: -60px; z-index: 500; background: var(--mfc-accent); color: var(--mfc-accent-text); padding: 8px 12px; border-radius: 8px; }
+.skip-link:focus { top: 8px; }
+.main:focus { outline: none; }

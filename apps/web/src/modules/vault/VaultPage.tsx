@@ -8,6 +8,7 @@ import { downloadText, pickFile } from "../../lib/download";
 import { ApiError } from "../../lib/api";
 import { vaultApi, useVaultUi, type SecretMeta } from "./vaultApi";
 import * as I from "../../ui/icons";
+import { confirmDialog } from "../../ui/dialog";
 
 /** Cryptographically random value for passwords, JWT/session secrets and API tokens. */
 export function generateSecret(length = 48): string {
@@ -303,7 +304,11 @@ function SecretRow({ s, projects, canReveal, canWrite }: { s: SecretMeta; projec
     try {
       const v = value ?? (await vaultApi.reveal(s.id)).value;
       await navigator.clipboard.writeText(v);
-      toast(`${s.name} ${t("common.copied").toLowerCase()}`, "success");
+      toast(t("vault.copiedClears", { name: s.name }), "success");
+      // Clear the clipboard after 30 s if it still holds this secret (best effort; needs focus).
+      setTimeout(() => {
+        void navigator.clipboard.readText().then((cur): unknown => cur === v && navigator.clipboard.writeText("")).catch(() => undefined);
+      }, 30_000);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Clipboard unavailable", "error");
     }
@@ -332,7 +337,7 @@ function SecretRow({ s, projects, canReveal, canWrite }: { s: SecretMeta; projec
             {canWrite && <button className="icon-btn" title={t("vault.rotate")} onClick={() => setPanel(panel === "rotate" ? null : "rotate")}><I.IconRotate size={15} /></button>}
             <button className="icon-btn" title={t("vault.versions")} onClick={() => { setPanel(panel === "versions" ? null : "versions"); vaultApi.versions(s.id).then(setVersions); }}><I.IconHistory size={15} /></button>
             {canWrite && <button className="icon-btn" title={t("common.edit")} onClick={() => setPanel(panel === "edit" ? null : "edit")}><I.IconSettings size={15} /></button>}
-            {canWrite && <button className="icon-btn" title={t("common.delete")} onClick={async () => { if (window.confirm(`${t("common.delete")} ${s.name} (${s.environment})? ${t("common.confirm")}`)) { await vaultApi.remove(s.id); refresh(); } }}><I.IconTrash size={15} /></button>}
+            {canWrite && <button className="icon-btn" title={t("common.delete")} onClick={async () => { if (await confirmDialog(`${t("common.delete")} ${s.name} (${s.environment})?`, { danger: true, ok: t("common.delete") })) { await vaultApi.remove(s.id); refresh(); } }}><I.IconTrash size={15} /></button>}
           </div>
         </td>
       </tr>

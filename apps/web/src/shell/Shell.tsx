@@ -15,6 +15,8 @@ import { ShortcutsHelp } from "./ShortcutsHelp";
 import * as I from "../ui/icons";
 import { useCompact } from "../lib/media";
 import { usePwa } from "../lib/pwa";
+import { ask, DialogHost } from "../ui/dialog";
+import { useNet } from "../lib/guards";
 
 const CopilotPanel = lazy(() => import("../modules/copilot/CopilotPanel"));
 
@@ -60,6 +62,7 @@ export function Shell() {
   const [menu, setMenu] = useState(false);
   const compact = useCompact();
   const pwa = usePwa();
+  const online = useNet((x) => x.online);
 
   useEffect(() => setNavigate((p) => navigate(p)), [navigate]);
   useEffect(() => setModule(moduleForPath(location.pathname).id), [location.pathname, setModule]);
@@ -70,7 +73,7 @@ export function Shell() {
   useShortcuts();
 
   const newWorkspace = async () => {
-    const name = window.prompt(t("shell.newWorkspace"));
+    const name = (await ask(t("shell.newWorkspace")))?.trim();
     if (!name) return;
     const r = await api.post<{ workspace: { id: string } }>("/api/workspaces", { name });
     await refresh();
@@ -79,6 +82,7 @@ export function Shell() {
 
   return (
     <div className="shell">
+      <a className="skip-link" href="#mfc-main" onClick={(e) => (e.preventDefault(), document.getElementById("mfc-main")?.focus())}>{t("shell.skip")}</a>
       <header className="topbar">
         <button className="icon-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
           <I.IconMenu size={18} />
@@ -184,7 +188,12 @@ export function Shell() {
         </div>
       </nav>
 
-      <main className="main">
+      <main className="main" id="mfc-main" tabIndex={-1}>
+        {!online && (
+          <div className="update-bar offline-bar" role="alert">
+            <I.IconWarning size={15} /> <span className="grow">{t("net.offline")}</span>
+          </div>
+        )}
         {pwa.updateReady && (
           <div className="update-bar" role="status">
             <I.IconSparkles size={15} /> <span className="grow">{t("pwa.update")}</span>
@@ -209,6 +218,7 @@ export function Shell() {
       )}
 
       <CommandPalette />
+      <DialogHost />
       <Onboarding />
       <ShortcutsHelp />
       <Toasts />

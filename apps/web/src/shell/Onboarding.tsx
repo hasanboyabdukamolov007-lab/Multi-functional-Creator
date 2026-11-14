@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUi } from "../lib/ui";
 import { useT } from "../lib/i18n";
 import { registry } from "../lib/registry";
+import { useCoarse } from "../lib/media";
 import { IconBot, IconBuilder, IconCommand, IconStudio, IconVault } from "../ui/icons";
 
 const STEPS = [
@@ -17,6 +18,7 @@ export function Onboarding() {
   const open = useUi((s) => s.onboardingOpen);
   const setOpen = useUi((s) => s.setOnboarding);
   const [i, setI] = useState(0);
+  const touch = useCoarse();
   if (!open) return null;
   const step = STEPS[i];
   const close = () => {
@@ -33,7 +35,7 @@ export function Onboarding() {
           {t(`${step.key}.title`)}
         </div>
         <p className="muted" style={{ marginTop: 8 }}>
-          {t(`${step.key}.body`, { n: Math.floor(registry.size / 50) * 50 })}
+          {t(touch && (step.key === "onboard.1" || step.key === "onboard.5") ? `${step.key}.touch` : `${step.key}.body`, { n: Math.floor(registry.size / 50) * 50 })}
         </p>
         <div className="row" style={{ justifyContent: "center", gap: 6, margin: "20px 0" }}>
           {STEPS.map((_, j) => (

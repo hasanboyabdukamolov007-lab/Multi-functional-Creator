@@ -6,6 +6,7 @@ import { useSession } from "../../lib/session";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { ask, confirmDialog } from "../../ui/dialog";
 
 const NODE_W = 200;
 const NODE_H = 64;
@@ -179,7 +180,7 @@ function RunList({ runs, onRefresh }: { runs: WfRun[]; onRefresh: () => void }) 
   );
 }
 
-function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; onChanged: () => void }) {
+function Editor({ id, canManage, onChanged, onOpen }: { id: string; canManage: boolean; onChanged: () => void; onOpen: (id: string) => void }) {
   const t = useT();
   const [wf, setWf] = useState<Workflow | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -219,7 +220,7 @@ function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; 
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s" && dirty) {
         e.preventDefault();
-        void save().then((ok) => ok && toast(t("common.saved"), "success"));
+        void save().then((ok): unknown => ok && toast(t("common.saved"), "success"));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -229,11 +230,21 @@ function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; 
   if (!wf) return <div className="grow muted" style={{ padding: 20 }}>{t("common.loading")}</div>;
   const node = wf.graph.nodes.find((n) => n.id === selected) ?? null;
 
-  const run = async () => {
+  const run = async (withInput = false) => {
+    let input: unknown;
+    if (withInput) {
+      const raw = await ask(t("data.wf.testInput"), '{\n  "hello": "world"\n}', { multiline: true });
+      if (raw === null) return;
+      try {
+        input = raw.trim() ? JSON.parse(raw) : undefined;
+      } catch {
+        return toast(t("data.wf.badJson"), "error");
+      }
+    }
     if (dirty && !(await save())) return;
     setBusy(true);
     try {
-      const r = await workflowApi.run(id);
+      const r = await workflowApi.run(id, input);
       toast(r?.status === "succeeded" ? t("data.wf.runOk") : `${t("data.wf.runFailed")}: ${r?.error ?? ""}`, r?.status === "succeeded" ? "success" : "error");
       loadRuns();
       setSide("runs");
@@ -241,6 +252,17 @@ function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; 
       toast((e as Error).message, "error");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const duplicate = async () => {
+    try {
+      const nid = await workflowApi.create(`${wf.name} (copy)`, wf.graph);
+      onChanged();
+      onOpen(nid);
+      toast(t("data.duplicated"), "success");
+    } catch (e) {
+      toast((e as Error).message, "error");
     }
   };
 
@@ -306,7 +328,9 @@ function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; 
             {t("data.wf.enabledLabel")}
           </label>
         )}
-        {canManage && <button className="btn btn-sm" disabled={!dirty} onClick={() => void save().then((ok) => ok && toast(t("common.saved"), "success"))}><I.IconSave size={14} /> {t("common.save")}</button>}
+        {canManage && <button className="btn btn-sm" disabled={!dirty} onClick={() => void save().then((ok): unknown => ok && toast(t("common.saved"), "success"))}><I.IconSave size={14} /> {t("common.save")}</button>}
+        {canManage && <button className="btn btn-sm" disabled={busy || problems.length > 0} onClick={() => void run(true)} title={t("data.wf.testInput")}>{"{ }"}</button>}
+        {canManage && <button className="btn btn-sm btn-ghost" onClick={() => void duplicate()} title={t("data.duplicate")}><I.IconCopy size={14} /></button>}
         {canManage && <button className="btn btn-sm btn-primary" disabled={busy || problems.length > 0} onClick={() => void run()}>{busy ? <I.IconSpinner size={14} className="spin" /> : <I.IconPlay size={14} />} {t("data.wf.runNow")}</button>}
       </div>
       <div className="row" style={{ flex: 1, minHeight: 0, alignItems: "stretch", gap: 0 }}>
@@ -374,7 +398,7 @@ function Editor({ id, canManage, onChanged }: { id: string; canManage: boolean; 
                   wf={wf}
                   onChange={(nn) => setGraph((g) => ({ nodes: g.nodes.map((x) => (x.id === nn.id ? nn : x)) }))}
                   onRemove={() => (setGraph((g) => removeNode(g, node.id)), setSelected(null))}
-                  onRotate={() => window.confirm(t("data.wf.rotateConfirm")) && void workflowApi.rotateWebhook(id).then((webhookPath) => (setWf((w) => (w ? { ...w, webhookPath } : w)), toast(t("data.wf.rotated"), "success")))}
+                  onRotate={() => void confirmDialog(t("data.wf.rotateConfirm"), { danger: true }).then((ok): unknown => ok && workflowApi.rotateWebhook(id).then((webhookPath) => (setWf((w) => (w ? { ...w, webhookPath } : w)), toast(t("data.wf.rotated"), "success"))))}
                 />
               </fieldset>
             ) : (
@@ -402,7 +426,7 @@ export default function Workflows() {
   const open = (id: string | null) => setParams(id ? { tab: "workflows", workflow: id } : { tab: "workflows" });
 
   const create = async () => {
-    const name = window.prompt(t("data.wf.name"), "New workflow")?.trim();
+    const name = (await ask(t("data.wf.name"), "New workflow"))?.trim();
     if (!name) return;
     try {
       const id = await workflowApi.create(name);
@@ -428,12 +452,12 @@ export default function Workflows() {
               <span className="grow ellipsis">{w.name}</span>
               <span className="badge">{w.trigger}</span>
               {w.lastRun && <span className={`badge ${w.lastRun.status === "succeeded" ? "badge-success" : "badge-danger"}`} title={new Date(w.lastRun.started_at).toLocaleString()}>{w.lastRun.status === "succeeded" ? "✓" : "✕"}</span>}
-              {canManage && <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); if (window.confirm(t("common.confirm"))) void workflowApi.remove(w.id).then(() => (active === w.id && open(null), reload())); }}><I.IconTrash size={12} /></button>}
+              {canManage && <button className="icon-btn" style={{ width: 22, height: 22 }} aria-label={t("common.delete")} onClick={(e) => { e.stopPropagation(); void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && workflowApi.remove(w.id).then(() => (active === w.id && open(null), reload()))); }}><I.IconTrash size={12} /></button>}
             </div>
           ))}
         </div>
       </aside>
-      {active ? <Editor key={active} id={active} canManage={canManage} onChanged={reload} /> : <div className="grow" style={{ padding: 16 }}><div className="empty">{t("data.wf.intro")}</div></div>}
+      {active ? <Editor key={active} id={active} canManage={canManage} onChanged={reload} onOpen={open} /> : <div className="grow" style={{ padding: 16 }}><div className="empty">{t("data.wf.intro")}</div></div>}
     </div>
   );
 }

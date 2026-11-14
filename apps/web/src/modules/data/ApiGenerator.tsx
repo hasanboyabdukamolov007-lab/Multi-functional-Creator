@@ -8,6 +8,8 @@ import { downloadBlob, slugify } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { trackUnsaved } from "../../lib/guards";
+import { ask, confirmDialog } from "../../ui/dialog";
 
 function Picker() {
   const t = useT();
@@ -17,7 +19,7 @@ function Picker() {
     projectsApi.list("api").then(setList).catch(() => setList([]));
   }, []);
   const create = async () => {
-    const name = window.prompt(t("data.apiName"), "Store API")?.trim();
+    const name = (await ask(t("data.apiName"), "Store API"))?.trim();
     if (!name) return;
     const spec = { ...starterSpec(), name };
     const p = await projectsApi.create(name, "api", spec);
@@ -72,6 +74,10 @@ function Editor({ projectId }: { projectId: string }) {
   const [legacy, setLegacy] = useState(false);
   const version = useRef(0);
   const saver = useRef(createAutosave(700));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => trackUnsaved(`api:${projectId}`, () => stateRef.current === "dirty" || stateRef.current === "saving"), [projectId]);
+  useEffect(() => () => void saver.current.flush(), []);
   useEffect(() => {
     projectsApi.get<ApiSpec>(projectId).then((p) => {
       version.current = p.version;
@@ -109,7 +115,7 @@ function Editor({ projectId }: { projectId: string }) {
         <div className="empty">{t("data.legacyApi")}</div>
         <div className="row">
           <Link className="btn btn-primary" to={`/builder?project=${projectId}`}>{t("data.openInBuilder")}</Link>
-          <button className="btn" onClick={() => window.confirm(t("data.replaceConfirm")) && (setLegacy(false), update((s) => s))}>{t("data.replaceWithSpec")}</button>
+          <button className="btn" onClick={() => void confirmDialog(t("data.replaceConfirm"), { danger: true }).then((ok): unknown => ok && (setLegacy(false), update((s) => s)))}>{t("data.replaceWithSpec")}</button>
         </div>
       </div></div>
     );
@@ -149,7 +155,7 @@ function Editor({ projectId }: { projectId: string }) {
                 <input className="input input-sm mono grow" value={r.name} onChange={(e) => setRes(r.id, (x) => ({ ...x, name: ident(e.target.value) }))} aria-label="Resource name" />
                 <span className="small muted mono">/{plural(r.name)}</span>
                 {spec.auth !== "none" && <label className="row small" style={{ gap: 3 }}><input type="checkbox" checked={r.protected} onChange={(e) => setRes(r.id, (x) => ({ ...x, protected: e.target.checked }))} /> <I.IconLock size={12} /></label>}
-                <button className="icon-btn" aria-label={t("common.delete")} onClick={() => window.confirm(t("common.confirm")) && update((s) => ({ ...s, resources: s.resources.filter((x) => x.id !== r.id) }))}><I.IconTrash size={14} /></button>
+                <button className="icon-btn" aria-label={t("common.delete")} onClick={() => void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && update((s) => ({ ...s, resources: s.resources.filter((x) => x.id !== r.id) })))}><I.IconTrash size={14} /></button>
               </div>
               {r.fields.map((f) => (
                 <FieldRow key={f.id} f={f} onChange={(nf) => setRes(r.id, (x) => ({ ...x, fields: x.fields.map((y) => (y.id === nf.id ? nf : y)) }))} onRemove={() => setRes(r.id, (x) => ({ ...x, fields: x.fields.filter((y) => y.id !== f.id) }))} />

@@ -1,3 +1,4 @@
+import { trackUnsaved } from "../../lib/guards";
 import { create } from "zustand";
 import { createAutosave, projectsApi } from "../../lib/projects";
 import { toast } from "../../lib/ui";
@@ -310,3 +311,6 @@ export const useStudio = create<StudioState>((set, get) => {
     toggleStats: () => set({ showStats: !get().showStats }),
   };
 });
+
+// Warn before closing the tab while edits are still on their way to the server.
+trackUnsaved("studio", () => ["dirty", "saving", "error"].includes(useStudio.getState().saveState));

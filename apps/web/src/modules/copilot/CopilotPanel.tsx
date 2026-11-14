@@ -3,9 +3,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useCopilot, EFFORTS, type Effort, type ForgeMsg, type ToolRun } from "./agent";
 import { STARTERS } from "./starters";
-import { useT } from "../../lib/i18n";
+import { useT, useI18n } from "../../lib/i18n";
+import { load, save } from "../../lib/storage";
+import { toast } from "../../lib/ui";
 import { runFunction } from "../../lib/registry";
 import * as I from "../../ui/icons";
+import { canListen, canSpeak, listen, speak, stopSpeaking } from "../../lib/speech";
 
 type Block = { type: string; text?: string; thinking?: string; name?: string; id?: string; input?: unknown; content?: unknown; tool_use_id?: string; from?: { model?: string }; to?: { model?: string } };
 
@@ -115,6 +118,10 @@ export default function CopilotPanel() {
   const t = useT();
   const c = useCopilot();
   const [input, setInput] = useState("");
+  const [listening, setListening] = useState<null | (() => void)>(null);
+  const [voiceOut, setVoiceOut] = useState(() => load("mfc.copilot.voice", false));
+  const locale = useI18n((s) => s.locale);
+  const spoken = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
 
@@ -128,11 +135,36 @@ export default function CopilotPanel() {
     area.current?.focus();
   }, []);
 
-  const submit = () => {
-    const text = input;
+  const submit = (override?: string) => {
+    const text = override ?? input;
+    if (!text.trim()) return;
     setInput("");
     void c.send(text);
   };
+  const mic = () => {
+    if (listening) return listening();
+    const stop = listen(
+      locale,
+      (text, final) => {
+        setInput(text);
+        if (final) submit(text);
+      },
+      (err) => {
+        setListening(null);
+        if (err && err !== "no-speech" && err !== "aborted") toast(err === "unsupported" ? t("copilot.voiceUnsupported") : err, "warning");
+      },
+    );
+    setListening(() => stop);
+  };
+  // Read Forge's finished answers aloud when voice output is on.
+  useEffect(() => {
+    if (!voiceOut || c.running) return;
+    const last = c.forge[c.forge.length - 1];
+    if (!last || last.role !== "forge" || c.forge.length === spoken.current) return;
+    spoken.current = c.forge.length;
+    const text = [last.text, ...(last.steps ?? []).map((st) => (st as { title?: string }).title ?? "")].filter(Boolean).join(". ");
+    void speak(text, locale);
+  }, [c.forge, c.running, voiceOut, locale]);
   const forge = c.provider === "forge";
   const builtin = c.provider === "claude";
   const unconfigured = builtin && c.status && !c.status.builtIn.configured;
@@ -259,9 +291,22 @@ export default function CopilotPanel() {
           {c.running ? (
             <button className="btn btn-danger" onClick={c.stop} title={t("copilot.stop")}><I.IconCircleStop size={15} /></button>
           ) : (
-            <button className="btn btn-primary" onClick={submit} disabled={!input.trim()} title={t("copilot.send")}><I.IconSend size={15} /></button>
+            <>
+              {canListen() && (
+                <button className={`btn ${listening ? "btn-danger" : "btn-ghost"}`} onClick={mic} title={t("copilot.voice")} aria-label={t("copilot.voice")} aria-pressed={!!listening}>
+                  <I.IconMic size={15} />
+                </button>
+              )}
+              <button className="btn btn-primary" onClick={() => submit()} disabled={!input.trim()} title={t("copilot.send")}><I.IconSend size={15} /></button>
+            </>
           )}
         </div>
+        {forge && canSpeak() && (
+          <label className="row small muted" style={{ gap: 6, marginTop: 6 }}>
+            <input type="checkbox" checked={voiceOut} onChange={(e) => { setVoiceOut(e.target.checked); save("mfc.copilot.voice", e.target.checked); if (!e.target.checked) stopSpeaking(); spoken.current = c.forge.length; }} />
+            <I.IconVolume size={13} /> {t("copilot.readAloud")}
+          </label>
+        )}
         {builtin && c.usage.output > 0 && (
           <div className="small muted" style={{ marginTop: 4, textAlign: "right" }}>
             {c.usage.input.toLocaleString()} in · {c.usage.cacheRead.toLocaleString()} cached · {c.usage.output.toLocaleString()} out

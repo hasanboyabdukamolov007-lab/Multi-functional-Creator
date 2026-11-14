@@ -197,6 +197,14 @@ describe.skipIf(!process.env.TEST_PG_URL)("data browser (real PostgreSQL)", () =
     expect(ro.json().error).toMatch(/read-only/i);
     const schema = (await app.inject({ method: "GET", url: `/api/w/${ws}/data/connections/${conn}/schema`, headers })).json().tables;
     expect(schema.find((t: { name: string }) => t.name === "public.mfc_items").columns.map((c: { name: string }) => c.name)).toEqual(["id", "name"]);
+    // Reverse engineering: primary and foreign keys come back with the columns.
+    await q("DROP TABLE IF EXISTS mfc_tags; CREATE TABLE mfc_tags (id serial primary key, item_id int references mfc_items(id), label text not null default 'x')", false);
+    const s2 = (await app.inject({ method: "GET", url: `/api/w/${ws}/data/connections/${conn}/schema`, headers })).json().tables;
+    const tags = s2.find((t: { name: string }) => t.name === "public.mfc_tags").columns;
+    expect(tags[0]).toMatchObject({ name: "id", pk: true, nullable: false });
+    expect(tags[1]).toMatchObject({ name: "item_id", pk: false, references: { table: "public.mfc_items", column: "id" } });
+    expect(tags[2]).toMatchObject({ name: "label", nullable: false, references: null });
+    await q("DROP TABLE mfc_tags", false);
     await q("DROP TABLE mfc_items", false);
     const audit = (await app.inject({ method: "GET", url: `/api/w/${ws}/audit`, headers })).json().events.map((e: { action: string }) => e.action);
     expect(audit).toEqual(expect.arrayContaining(["data.query", "data.write", "data.query.error", "data.connection.add"]));

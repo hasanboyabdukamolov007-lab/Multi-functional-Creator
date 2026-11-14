@@ -10,6 +10,7 @@ import { runFunction } from "../../lib/registry";
 import { vaultApi, type SecretMeta } from "../vault/vaultApi";
 import type { AiStatus } from "../copilot/agent";
 import * as I from "../../ui/icons";
+import { confirmDialog } from "../../ui/dialog";
 
 type Tab = "appearance" | "language" | "workspace" | "ai" | "account";
 
@@ -42,6 +43,8 @@ function Appearance() {
   const t = useT();
   const { activeId, all, setActive, draft, setDraft, saveCustom, removeCustom } = useTheme();
   const active = useTheme((s) => s.active());
+  const followSystem = useTheme((s) => s.followSystem);
+  const setFollowSystem = useTheme((s) => s.setFollowSystem);
   const tokens = draft ?? active.tokens;
   const edit = (patch: Partial<ThemeTokens>) => setDraft({ ...tokens, ...patch });
   const [name, setName] = useState("My theme");
@@ -50,7 +53,12 @@ function Appearance() {
   return (
     <div className="col" style={{ gap: 24 }}>
       <div>
-        <div className="section-label">{t("settings.themes")}</div>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div className="section-label">{t("settings.themes")}</div>
+          <label className="row small" style={{ gap: 6 }}>
+            <input type="checkbox" checked={followSystem} onChange={(e) => setFollowSystem(e.target.checked)} /> {t("theme.followLabel")}
+          </label>
+        </div>
         <div className="grid-auto" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
           {all().map((th) => (
             <button key={th.id} className="card" style={{ padding: 10, cursor: "pointer", textAlign: "left", color: "inherit", outline: th.id === activeId ? "2px solid var(--mfc-accent)" : undefined }} onClick={() => setActive(th.id)}>
@@ -197,7 +205,7 @@ function Workspace() {
                 <td className="small muted">{m.last_login_at ? new Date(m.last_login_at).toLocaleString() : "—"}</td>
                 <td>
                   {manage && m.id !== session.user?.id && (
-                    <button className="icon-btn" title="Remove" onClick={async () => { if (window.confirm(`Remove ${m.email}?`)) { try { await api.del(ws(`/members/${m.id}`)); void load(); } catch (err) { toast((err as Error).message, "error"); } } }}><I.IconTrash size={14} /></button>
+                    <button className="icon-btn" title="Remove" onClick={async () => { if (await confirmDialog(`Remove ${m.email}?`, { danger: true })) { try { await api.del(ws(`/members/${m.id}`)); void load(); } catch (err) { toast((err as Error).message, "error"); } } }}><I.IconTrash size={14} /></button>
                   )}
                 </td>
               </tr>

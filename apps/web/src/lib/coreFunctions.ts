@@ -49,6 +49,7 @@ export function registerCoreFunctions() {
         useTheme.getState().setActive(cur.tokens.scheme === "dark" ? "daylight" : "midnight-pro");
       },
     },
+    { id: "theme.follow-system", title: "Follow the device's light / dark setting", category: "Appearance", keywords: ["auto", "system", "dark mode", "light mode", "os"], run: () => { const v = !useTheme.getState().followSystem; useTheme.getState().setFollowSystem(v); toast(v ? t("theme.followOn") : t("theme.followOff"), "success"); } },
     { id: "theme.editor", title: "Open theme editor", category: "Appearance", run: (_a, ctx) => ctx.navigate("/settings?tab=appearance") },
     {
       id: "theme.export",

@@ -218,3 +218,86 @@ export function isDbSchema(d: unknown): d is DbSchema {
   const s = d as DbSchema;
   return !!s && Array.isArray(s.tables) && (s.dialect === "postgres" || s.dialect === "mysql");
 }
+
+/** Map a database's reported column type to the designer's portable types. */
+export function mapColumnType(raw: string): { type: ColumnType; length?: number } {
+  const t = raw.toLowerCase();
+  const len = /\((\d+)\)/.exec(t)?.[1];
+  if (t.includes("uuid") || t === "char(36)") return { type: "uuid" };
+  if (t.startsWith("bigint")) return { type: "bigint" };
+  if (/^(int|integer|smallint|mediumint|tinyint\((?!1\))|serial)/.test(t)) return { type: "integer" };
+  if (/^(tinyint\(1\)|bool)/.test(t)) return { type: "boolean" };
+  if (/^(numeric|decimal|real|double|float|money)/.test(t)) return { type: "numeric" };
+  if (/^(character varying|varchar)/.test(t)) return { type: "varchar", length: len ? Number(len) : 255 };
+  if (/^timestamp|^datetime/.test(t)) return { type: "timestamptz" };
+  if (t === "date") return { type: "date" };
+  if (/json/.test(t)) return { type: "jsonb" };
+  return { type: "text" };
+}
+
+/** Reverse-engineer a live database (as read by the data browser) into a designer schema. */
+export function importSchema(tables: Array<{ name: string; columns: Array<{ name: string; type: string; nullable: boolean; pk?: boolean; default?: string | null; references?: { table: string; column: string } | null }> }>, dialect: Dialect): DbSchema {
+  const short = (n: string) => n.replace(/^public\./, "");
+  const out: DbSchema = {
+    version: 1,
+    dialect,
+    applied: null,
+    tables: tables.map((tb) => ({
+      id: sid("t"),
+      name: short(tb.name),
+      x: 0,
+      y: 0,
+      columns: tb.columns.map((c) => {
+        const m = mapColumnType(c.type);
+        const serial = /nextval\(/.test(c.default ?? "") || /auto_increment/i.test(c.default ?? "");
+        return newColumn({
+          name: c.name,
+          type: serial ? "serial" : m.type,
+          length: m.length,
+          nullable: c.pk ? false : c.nullable,
+          pk: !!c.pk,
+          default: serial || !c.default ? undefined : c.default.replace(/::[a-z ]+$/i, ""),
+          references: c.references ? { table: short(c.references.table), column: c.references.column, onDelete: "cascade" } : null,
+        });
+      }),
+    })),
+  };
+  // Every snapshot imported from a live database is, by definition, already applied.
+  out.applied = { tables: structuredClone(autoArrange(out).tables), at: new Date().toISOString() };
+  return autoArrange(out);
+}
+
+/** Lay tables out left-to-right by foreign-key depth (referenced tables first), stacked in columns. */
+export function autoArrange(s: DbSchema): DbSchema {
+  const byName = new Map(s.tables.map((t) => [t.name, t]));
+  const depth = new Map<string, number>();
+  const visit = (t: Table, seen: Set<string>): number => {
+    if (depth.has(t.name)) return depth.get(t.name)!;
+    if (seen.has(t.name)) return 0;
+    seen.add(t.name);
+    const refs = t.columns.map((c) => c.references && byName.get(c.references.table)).filter((x): x is Table => !!x && x !== t);
+    const d = refs.length ? Math.max(...refs.map((r) => visit(r, seen) + 1)) : 0;
+    depth.set(t.name, d);
+    return d;
+  };
+  s.tables.forEach((t) => visit(t, new Set()));
+  const colY = new Map<number, number>();
+  return {
+    ...s,
+    tables: s.tables.map((t) => {
+      const d = depth.get(t.name) ?? 0;
+      const y = colY.get(d) ?? 40;
+      colY.set(d, y + 34 + t.columns.length * 24 + 50);
+      return { ...t, x: 40 + d * 300, y };
+    }),
+  };
+}
+
+/** Copy of a table with fresh ids and a unique name. */
+export function duplicateTable(s: DbSchema, id: string): Table | null {
+  const src = s.tables.find((t) => t.id === id);
+  if (!src) return null;
+  let name = `${src.name}_copy`;
+  for (let i = 2; s.tables.some((t) => t.name === name); i++) name = `${src.name}_copy${i}`;
+  return { ...structuredClone(src), id: sid("t"), name, x: src.x + 40, y: src.y + 40, columns: src.columns.map((c) => ({ ...structuredClone(c), id: sid("c") })) };
+}

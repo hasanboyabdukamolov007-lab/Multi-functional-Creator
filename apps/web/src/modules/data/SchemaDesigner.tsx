@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { COLUMN_TYPES, createSchemaSql, diffSql, isDbSchema, newColumn, newTable, starterSchema, validateSchema, type Column, type DbSchema, type Table } from "./sqlgen";
+import { COLUMN_TYPES, autoArrange, createSchemaSql, diffSql, duplicateTable, importSchema, isDbSchema, newColumn, newTable, starterSchema, validateSchema, type Column, type DbSchema, type Table } from "./sqlgen";
 import { dataApi, type Connection } from "./dataApi";
 import { createAutosave, projectsApi, type ProjectSummary } from "../../lib/projects";
 import { ApiError } from "../../lib/api";
@@ -8,6 +8,8 @@ import { downloadText, slugify } from "../../lib/download";
 import { toast } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import * as I from "../../ui/icons";
+import { trackUnsaved } from "../../lib/guards";
+import { ask, confirmDialog } from "../../ui/dialog";
 
 const CARD_W = 240;
 const ROW_H = 24;
@@ -19,6 +21,10 @@ function useDbProject(projectId: string | null) {
   const [state, setState] = useState<"saved" | "saving" | "dirty" | "conflict">("saved");
   const version = useRef(0);
   const saver = useRef(createAutosave(700));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => (projectId ? trackUnsaved(`db:${projectId}`, () => stateRef.current === "dirty" || stateRef.current === "saving") : undefined), [projectId]);
+  useEffect(() => () => void saver.current.flush(), []);
   useEffect(() => {
     if (!projectId) return;
     setSchema(null);
@@ -57,11 +63,31 @@ function Picker() {
   useEffect(() => {
     projectsApi.list("db").then(setList).catch(() => setList([]));
   }, []);
+  const [conns, setConns] = useState<Connection[]>([]);
+  const [importing, setImporting] = useState(false);
+  useEffect(() => {
+    dataApi.connections().then((c) => setConns(c.filter((x) => x.kind !== "mongodb"))).catch(() => setConns([]));
+  }, []);
   const create = async () => {
-    const name = window.prompt(t("data.schemaName"), "App database")?.trim();
+    const name = (await ask(t("data.schemaName"), "App database"))?.trim();
     if (!name) return;
     const p = await projectsApi.create(name, "db", starterSchema());
     setParams({ tab: "schema", project: p.id });
+  };
+  const importFrom = async (id: string) => {
+    const c = conns.find((x) => x.id === id);
+    if (!c) return;
+    setImporting(true);
+    try {
+      const schema = importSchema(await dataApi.schema(c.id), c.kind === "mysql" ? "mysql" : "postgres");
+      const p = await projectsApi.create(`${c.name} schema`, "db", schema);
+      toast(t("data.imported", { n: schema.tables.length }), "success");
+      setParams({ tab: "schema", project: p.id });
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setImporting(false);
+    }
   };
   return (
     <div className="page">
@@ -71,7 +97,15 @@ function Picker() {
             <h2 className="page-title">{t("data.tab.schema")}</h2>
             <p className="page-subtitle">{t("data.schemaIntro")}</p>
           </div>
-          <button className="btn btn-primary" onClick={() => void create()}><I.IconPlus size={15} /> {t("data.newSchema")}</button>
+          <div className="row wrap">
+            {conns.length > 0 && (
+              <select className="select" style={{ width: 230 }} value="" disabled={importing} onChange={(e) => e.target.value && void importFrom(e.target.value)} aria-label={t("data.importFromDb")}>
+                <option value="">{importing ? t("common.loading") : `⤓ ${t("data.importFromDb")}`}</option>
+                {conns.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.kind})</option>)}
+              </select>
+            )}
+            <button className="btn btn-primary" onClick={() => void create()}><I.IconPlus size={15} /> {t("data.newSchema")}</button>
+          </div>
         </div>
         {list === null ? <div className="muted">{t("common.loading")}</div> : list.length === 0 ? <div className="empty">{t("data.noSchemas")}</div> : (
           <div className="grid-auto">
@@ -137,7 +171,7 @@ function Editor({ projectId }: { projectId: string }) {
   const drag = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const canvas = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    dataApi.connections().then(setConns).catch(() => setConns([]));
+    dataApi.connections().then((c) => setConns(c.filter((x) => x.kind !== "mongodb"))).catch(() => setConns([]));
   }, []);
 
   const problems = useMemo(() => (schema ? validateSchema(schema) : []), [schema]);
@@ -173,12 +207,10 @@ function Editor({ projectId }: { projectId: string }) {
   const width = Math.max(900, ...schema.tables.map((tb) => tb.x + CARD_W + 80));
   const height = Math.max(520, ...schema.tables.map((tb) => tb.y + HEAD_H + tb.columns.length * ROW_H + 80));
 
-  const applyTo = async () => {
-    const c = conns.find((x) => x.kind === schema.dialect || (x.kind === "postgres" && schema.dialect === "postgres"));
-    const choice = window.prompt(`${t("data.applyPrompt")}\n${conns.filter((x) => x.kind !== "mongodb").map((x, i) => `${i + 1}. ${x.name} (${x.kind})`).join("\n")}`, c ? String(conns.indexOf(c) + 1) : "1");
-    const target = conns.filter((x) => x.kind !== "mongodb")[Number(choice) - 1];
+  const applyTo = async (id: string) => {
+    const target = conns.find((x) => x.id === id);
     if (!target) return;
-    if (!window.confirm(t("data.applyConfirm", { n: migration.length, name: target.name }))) return;
+    if (!(await confirmDialog(t("data.applyConfirm", { n: migration.length, name: target.name }), { body: migration.join("\n\n").slice(0, 1200), danger: true, ok: t("data.applyToDb") }))) return;
     try {
       for (const stmt of migration) await dataApi.query(target.id, { sql: stmt, readOnly: false });
       update((s) => ({ ...s, applied: { tables: structuredClone(s.tables), at: new Date().toISOString() } }));
@@ -199,6 +231,7 @@ function Editor({ projectId }: { projectId: string }) {
           setSelected(tb.id);
           return { ...s, tables: [...s.tables, tb] };
         })}><I.IconPlus size={14} /> {t("data.addTable")}</button>
+        <button className="btn btn-sm btn-ghost" title={t("data.arrange")} onClick={() => update((s) => autoArrange(s))}><I.IconGrid size={14} /> {t("data.arrange")}</button>
         <select className="select input-sm" style={{ width: 130 }} value={schema.dialect} onChange={(e) => update((s) => ({ ...s, dialect: e.target.value as DbSchema["dialect"] }))} aria-label="Dialect">
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
@@ -206,7 +239,10 @@ function Editor({ projectId }: { projectId: string }) {
         <div className="grow" />
         {problems.length > 0 ? <span className="badge badge-warning" title={problems.join("\n")}><I.IconWarning size={12} /> {problems.length}</span> : <span className="badge badge-success"><I.IconCheck size={12} /> valid</span>}
         <button className="btn btn-sm" disabled={!createSql} onClick={() => downloadText(`${slugify(name)}.sql`, createSql, "application/sql")}><I.IconDownload size={14} /> .sql</button>
-        <button className="btn btn-sm" disabled={!migration.length} onClick={() => void applyTo()}><I.IconDeploy size={14} /> {t("data.applyToDb")}</button>
+        <select className="select input-sm" style={{ width: 150 }} value="" disabled={!migration.length || !conns.some((c) => c.kind === (schema.dialect === "mysql" ? "mysql" : "postgres"))} onChange={(e) => e.target.value && void applyTo(e.target.value)} aria-label={t("data.applyToDb")} title={t("data.applyToDb")}>
+          <option value="">🚀 {t("data.applyToDb")}…</option>
+          {conns.filter((c) => c.kind === (schema.dialect === "mysql" ? "mysql" : "postgres")).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
         <button className="btn btn-sm btn-ghost" disabled={!migration.length} onClick={() => update((s) => ({ ...s, applied: { tables: structuredClone(s.tables), at: new Date().toISOString() } }))}>{t("data.markApplied")}</button>
       </div>
       <div className="row" style={{ flex: 1, minHeight: 0, alignItems: "stretch", gap: 0 }}>
@@ -245,7 +281,8 @@ function Editor({ projectId }: { projectId: string }) {
               <div className="col" style={{ gap: 8 }}>
                 <div className="row">
                   <input className="input mono grow" value={table.name} onChange={(e) => setTable(table.id, (tb) => ({ ...tb, name: e.target.value.replace(/[^A-Za-z0-9_]/g, "_") }))} aria-label="Table name" />
-                  <button className="icon-btn" aria-label={t("common.delete")} onClick={() => window.confirm(t("common.confirm")) && (update((s) => ({ ...s, tables: s.tables.filter((x) => x.id !== table.id) })), setSelected(null))}><I.IconTrash size={15} /></button>
+                  <button className="icon-btn" aria-label={t("data.duplicate")} title={t("data.duplicate")} onClick={() => update((s) => { const c = duplicateTable(s, table.id); if (c) setSelected(c.id); return c ? { ...s, tables: [...s.tables, c] } : s; })}><I.IconCopy size={15} /></button>
+                  <button className="icon-btn" aria-label={t("common.delete")} onClick={() => void confirmDialog(t("common.confirm"), { danger: true }).then((ok): unknown => ok && (update((s) => ({ ...s, tables: s.tables.filter((x) => x.id !== table.id) })), setSelected(null)))}><I.IconTrash size={15} /></button>
                 </div>
                 {table.columns.map((c) => (
                   <ColumnRow key={c.id} c={c} tables={schema.tables} onChange={(nc) => setTable(table.id, (tb) => ({ ...tb, columns: tb.columns.map((x) => (x.id === nc.id ? nc : x)) }))} onRemove={() => setTable(table.id, (tb) => ({ ...tb, columns: tb.columns.filter((x) => x.id !== c.id) }))} />

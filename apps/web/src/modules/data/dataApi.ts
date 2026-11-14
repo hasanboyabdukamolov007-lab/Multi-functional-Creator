@@ -43,11 +43,11 @@ export interface QueryResult {
 }
 export interface SchemaTable {
   name: string;
-  columns: Array<{ name: string; type: string; nullable: boolean }>;
+  columns: Array<{ name: string; type: string; nullable: boolean; pk?: boolean; default?: string | null; references?: { table: string; column: string } | null }>;
 }
 
 export const httpApi = {
-  send: (r: HttpReq) => api.post<HttpRes>(ws("/http/send"), r),
+  send: (r: HttpReq, signal?: AbortSignal) => api.post<HttpRes>(ws("/http/send"), r, signal),
   list: () => api.get<{ requests: SavedRequest[] }>(ws("/http/requests")).then((r) => r.requests),
   create: (r: HttpReq & { name: string }) => api.post<{ id: string }>(ws("/http/requests"), r),
   update: (id: string, r: HttpReq & { name: string }) => api.put(ws(`/http/requests/${id}`), r),
