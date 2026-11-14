@@ -22,7 +22,7 @@ export const pushRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/devices", async (req) => {
     const user = requireUser(req);
-    const devices = await db.query(`SELECT id, kind, label, created_at, last_used_at FROM push_devices WHERE user_id = $1 ORDER BY created_at DESC`, [user.id]);
+    const devices = await db.query(`SELECT id, kind, label, created_at, last_used_at, CASE WHEN kind = 'webpush' THEN token END AS endpoint FROM push_devices WHERE user_id = $1 ORDER BY created_at DESC`, [user.id]);
     return { devices };
   });
 

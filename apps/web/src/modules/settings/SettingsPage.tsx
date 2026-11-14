@@ -11,8 +11,10 @@ import { vaultApi, type SecretMeta } from "../vault/vaultApi";
 import type { AiStatus } from "../copilot/agent";
 import * as I from "../../ui/icons";
 import { confirmDialog } from "../../ui/dialog";
+import Billing from "./Billing";
+import Devices from "./Devices";
 
-type Tab = "appearance" | "language" | "workspace" | "ai" | "account";
+type Tab = "appearance" | "language" | "workspace" | "billing" | "ai" | "devices" | "account";
 
 const COLOR_KEYS: Array<[keyof ThemeTokens, string]> = [
   ["bg", "Background"],
@@ -395,7 +397,9 @@ export default function SettingsPage() {
     ["appearance", t("settings.appearance"), I.IconPalette],
     ["language", t("settings.language"), I.IconLanguages],
     ["workspace", t("settings.workspace"), I.IconCollab],
+    ["billing", t("settings.billing"), I.IconCard],
     ["ai", t("settings.ai"), I.IconSparkles],
+    ["devices", t("settings.devices"), I.IconPhone],
     ["account", t("settings.account"), I.IconSettings],
   ];
   return (
@@ -412,7 +416,9 @@ export default function SettingsPage() {
         {tab === "appearance" && <Appearance />}
         {tab === "language" && <Language />}
         {tab === "workspace" && <Workspace />}
+        {tab === "billing" && <Billing />}
         {tab === "ai" && <AiSettings />}
+        {tab === "devices" && <Devices />}
         {tab === "account" && <Account />}
       </div>
     </div>

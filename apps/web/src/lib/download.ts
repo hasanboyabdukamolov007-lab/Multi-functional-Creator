@@ -1,8 +1,15 @@
+import { isMobileShell, saveViaNative } from "./native";
+
 export function downloadText(filename: string, content: string, type = "text/plain") {
   downloadBlob(filename, new Blob([content], { type: `${type};charset=utf-8` }));
 }
 
 export function downloadBlob(filename: string, blob: Blob) {
+  // Inside the mobile app a WebView can't save blob: URLs, so the native side saves / shares the file.
+  if (isMobileShell()) {
+    void saveViaNative(blob, filename);
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

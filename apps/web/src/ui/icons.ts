@@ -101,4 +101,7 @@ export {
   Bug as IconBug,
   ChartLine as IconChart,
   Timer as IconTimer,
+  QrCode as IconQr,
+  Laptop as IconLaptop,
+  BellRing as IconBellRing,
 } from "lucide-react";

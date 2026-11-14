@@ -5,6 +5,8 @@ export interface Toast {
   id: number;
   kind: "info" | "success" | "error" | "warning";
   text: string;
+  /** Optional button: an i18n key for its label and an in-app path. */
+  action?: { labelKey: string; href: string };
 }
 
 interface UiState {
@@ -19,7 +21,7 @@ interface UiState {
   setOnboarding: (v: boolean) => void;
   toggleSidebar: () => void;
   setModule: (m: string) => void;
-  toast: (text: string, kind?: Toast["kind"]) => void;
+  toast: (text: string, kind?: Toast["kind"], action?: Toast["action"]) => void;
   dismiss: (id: number) => void;
 }
 
@@ -47,15 +49,17 @@ export const useUi = create<UiState>((set, get) => ({
     set({ sidebarCollapsed: v });
   },
   setModule: (module) => set({ module }),
-  toast: (text, kind = "info") => {
+  toast: (text, kind = "info", action) => {
     const id = ++toastSeq;
-    set({ toasts: [...get().toasts, { id, kind, text }].slice(-5) });
-    setTimeout(() => get().dismiss(id), kind === "error" ? 7000 : 3500);
+    // Plan-limit errors from the server get an "Upgrade" button wherever they're shown.
+    if (!action && kind === "error" && /Settings → Billing/.test(text)) action = { labelKey: "billing.upgrade", href: "/settings?tab=billing" };
+    set({ toasts: [...get().toasts, { id, kind, text, action }].slice(-5) });
+    setTimeout(() => get().dismiss(id), kind === "error" || action ? 8000 : 3500);
   },
   dismiss: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 }));
 
-export const toast = (text: string, kind?: Toast["kind"]) => useUi.getState().toast(text, kind);
+export const toast = (text: string, kind?: Toast["kind"], action?: Toast["action"]) => useUi.getState().toast(text, kind, action);
 
 /** Copy text to the clipboard; never throws (some browsers deny clipboard access). */
 export async function copyText(text: string, okMessage?: string): Promise<boolean> {

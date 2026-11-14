@@ -40,7 +40,7 @@ interface Stats {
 interface Channel {
   id: string;
   name: string;
-  kind: "email" | "telegram" | "slack" | "discord" | "webhook";
+  kind: "email" | "telegram" | "slack" | "discord" | "webhook" | "push";
   config: Record<string, string>;
   secret_id: string | null;
   secret_name: string | null;
@@ -256,6 +256,7 @@ function Alerts({ t, manage }: { t: (k: string, v?: Record<string, string | numb
     slack: { config: [], secret: t("mon.secret.slack") },
     discord: { config: [], secret: t("mon.secret.discord") },
     webhook: { config: [["url", "https://example.com/hooks/alerts"]], secret: t("mon.secret.webhook") },
+    push: { config: [], secret: null },
   };
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,8 +274,14 @@ function Alerts({ t, manage }: { t: (k: string, v?: Record<string, string | numb
       <div className="row"><strong className="grow">{t("mon.channels")}</strong>{manage && !form && <button className="btn btn-primary btn-sm" onClick={() => setForm({ name: "", kind: "telegram", config: {}, secretId: "", events: ["monitor.down", "monitor.up", "deploy.failed", "workflow.failed"] })}><I.IconPlus size={14} /> {t("mon.addChannel")}</button>}</div>
       {form && (
         <form className="card col" style={{ gap: 10 }} onSubmit={save}>
-          <div className="row wrap" style={{ gap: 6 }}>{(["email", "telegram", "slack", "discord", "webhook"] as const).map((k) => <button type="button" key={k} className={`btn btn-sm ${form.kind === k ? "btn-primary" : ""}`} onClick={() => setForm({ ...form, kind: k, config: {} })}>{k}</button>)}</div>
+          <div className="row wrap" style={{ gap: 6 }}>{(["push", "email", "telegram", "slack", "discord", "webhook"] as const).map((k) => <button type="button" key={k} className={`btn btn-sm ${form.kind === k ? "btn-primary" : ""}`} onClick={() => setForm({ ...form, kind: k, config: {} })}>{k}</button>)}</div>
           <input className="input" required placeholder={t("common.name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          {form.kind === "push" && (
+            <div className="col" style={{ gap: 6 }}>
+              <span className="hint">{t("mon.pushHelp")}</span>
+              <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={form.config.audience === "admins"} onChange={(e) => setForm({ ...form, config: { ...form.config, audience: e.target.checked ? "admins" : "all" } })} /> {t("mon.pushAdmins")}</label>
+            </div>
+          )}
           {KIND_HELP[form.kind].config.map(([k, ph]) => <input key={k} className="input mono" required placeholder={ph} value={form.config[k] ?? ""} onChange={(e) => setForm({ ...form, config: { ...form.config, [k]: e.target.value } })} aria-label={k} />)}
           {KIND_HELP[form.kind].secret && (
             <label className="col" style={{ gap: 4 }}><span className="label">{KIND_HELP[form.kind].secret}</span>

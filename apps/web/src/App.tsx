@@ -1,11 +1,12 @@
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { MODULES } from "./modules";
 import { Shell } from "./shell/Shell";
 import { useSession } from "./lib/session";
 import { useT, translate, useI18n } from "./lib/i18n";
 import { setUnauthorizedHandler } from "./lib/api";
 import { toast } from "./lib/ui";
+import { initNative, nativeSession } from "./lib/native";
 
 const LoginPage = lazy(() => import("./modules/auth/LoginPage"));
 const VerifyPage = lazy(() => import("./modules/auth/VerifyPage"));
@@ -36,6 +37,17 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Connects the desktop / mobile shells: in-app links from notifications, push token, session state. */
+function NativeBridge() {
+  const navigate = useNavigate();
+  const status = useSession((s) => s.status);
+  useEffect(() => initNative(navigate), [navigate]);
+  useEffect(() => {
+    if (status !== "loading") nativeSession(status === "ready");
+  }, [status]);
+  return null;
+}
+
 export default function App() {
   const refresh = useSession((s) => s.refresh);
   useEffect(() => {
@@ -49,6 +61,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <NativeBridge />
       <Suspense fallback={null}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

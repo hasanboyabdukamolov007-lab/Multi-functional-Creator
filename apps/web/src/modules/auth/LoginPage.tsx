@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../lib/api";
+import { useSession } from "../../lib/session";
 import { useT } from "../../lib/i18n";
 import { IconSpinner } from "../../ui/icons";
 
@@ -8,15 +10,36 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<{ devLink?: string } | null>(null);
+  const [sent, setSent] = useState<{ devLink?: string; devCode?: string } | null>(null);
+  const [code, setCode] = useState("");
+  const refresh = useSession((s) => s.refresh);
+  const navigate = useNavigate();
+
+  const verifyCode = async (value: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post("/api/auth/verify-code", { email, code: value });
+      await refresh();
+      const next = sessionStorage.getItem("mfc.next");
+      sessionStorage.removeItem("mfc.next");
+      navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/", { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.error"));
+      setCode("");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const r = await api.post<{ ok: boolean; devLink?: string }>("/api/auth/magic-link", { email });
-      setSent({ devLink: r.devLink });
+      const r = await api.post<{ ok: boolean; devLink?: string; devCode?: string }>("/api/auth/magic-link", { email });
+      setSent({ devLink: r.devLink, devCode: r.devCode });
+      setCode("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.error"));
     } finally {
@@ -35,6 +58,31 @@ export default function LoginPage() {
             <div className="col" style={{ gap: 12 }}>
               <h1 style={{ fontSize: 20 }}>{t("login.sent")}</h1>
               <p className="muted">{t("login.sentBody", { email })}</p>
+              <form className="col" style={{ gap: 8 }} onSubmit={(e) => (e.preventDefault(), code.length === 6 && void verifyCode(code))}>
+                <label htmlFor="code" className="small muted">{t("login.codeLabel")}</label>
+                <div className="row" style={{ gap: 8 }}>
+                  <input
+                    id="code"
+                    className="input mono code-input"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={code}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setCode(v);
+                      if (v.length === 6) void verifyCode(v);
+                    }}
+                    aria-label={t("login.codeLabel")}
+                  />
+                  <button className="btn btn-primary" disabled={busy || code.length !== 6}>{busy ? <IconSpinner size={15} className="spin" /> : t("login.codeSubmit")}</button>
+                </div>
+                {sent.devCode && <span className="hint">{t("login.devCode", { code: sent.devCode })}</span>}
+              </form>
+              {error && <div className="badge badge-danger" style={{ whiteSpace: "normal" }}>{error}</div>}
               {sent.devLink && (
                 <>
                   <p className="hint">{t("login.devNote")}</p>
@@ -43,7 +91,7 @@ export default function LoginPage() {
                   </a>
                 </>
               )}
-              <button className="btn btn-ghost" onClick={() => setSent(null)}>
+              <button className="btn btn-ghost" onClick={() => (setSent(null), setError(null))}>
                 {t("login.again")}
               </button>
             </div>
