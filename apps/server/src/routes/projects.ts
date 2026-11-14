@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { parse, requirePerm, notFound, HttpError } from "../lib/http.js";
 import { audit } from "../lib/audit.js";
+import { snapshot } from "./collab.js";
 
 export const PROJECT_KINDS = ["site", "panel", "app", "api", "scene3d", "db"] as const;
 
@@ -55,6 +56,11 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
     const a = requirePerm(req, "projects.write");
     const { id } = req.params as { id: string };
     const body = parse(UpdateBody, req.body);
+    // Automatic version history: before replacing the data, keep the previous state (at most every 10 minutes).
+    if (body.data) {
+      const recent = await db.one(`SELECT 1 FROM project_versions WHERE project_id = $1 AND auto AND created_at > now() - interval '10 minutes'`, [id]);
+      if (!recent) await snapshot(db, id, a.workspaceId, req.user!.id, null, true);
+    }
     const project = await db.one(
       `UPDATE projects SET name = coalesce($3, name), data = coalesce($4::jsonb, data), version = version + CASE WHEN $4::jsonb IS NULL THEN 0 ELSE 1 END, updated_at = now()
        WHERE id = $1 AND workspace_id = $2 AND ($5::int IS NULL OR version = $5::int) RETURNING id, name, kind, version, updated_at`,

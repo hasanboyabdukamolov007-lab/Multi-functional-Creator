@@ -25,6 +25,8 @@ import { forgeRoutes } from "./routes/forge.js";
 import { deployRoutes } from "./routes/deploy.js";
 import { monitoringRoutes } from "./routes/monitoring.js";
 import { assetPublicRoutes, assetRoutes, brandRoutes } from "./routes/assets.js";
+import { collabRoutes, notificationRoutes } from "./routes/collab.js";
+import { marketRoutes } from "./routes/market.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -141,6 +143,9 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(assetRoutes, { prefix: "/api/w/:workspaceId/assets" });
   await app.register(brandRoutes, { prefix: "/api/w/:workspaceId/brand" });
   await app.register(assetPublicRoutes, { prefix: "/api" });
+  await app.register(collabRoutes, { prefix: "/api/w/:workspaceId" });
+  await app.register(notificationRoutes, { prefix: "/api" });
+  await app.register(marketRoutes, { prefix: "/api/w/:workspaceId" });
   await app.register(publicRoutes, { prefix: "/api" });
 
   if (config.scheduler) {

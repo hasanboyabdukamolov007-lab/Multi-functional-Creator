@@ -328,4 +328,86 @@ CREATE TABLE IF NOT EXISTS brand_kits (
   updated_at timestamptz NOT NULL DEFAULT now()
 )`,
   },
+  {
+    id: 8,
+    name: "collaboration-ecosystem",
+    sql: `CREATE TABLE IF NOT EXISTS presence (
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  color text NOT NULL,
+  selection text,
+  cursor jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (project_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS comments (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  node_id text,
+  parent_id uuid REFERENCES comments(id) ON DELETE CASCADE,
+  author_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  body text NOT NULL,
+  mentions uuid[] NOT NULL DEFAULT '{}',
+  resolved boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS comments_project ON comments (project_id, created_at);
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  title text NOT NULL,
+  body text,
+  link text,
+  read_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS user_notifications_unread ON user_notifications (user_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS project_versions (
+  id uuid PRIMARY KEY,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  version int NOT NULL,
+  label text,
+  auto boolean NOT NULL DEFAULT true,
+  data jsonb NOT NULL,
+  created_by uuid REFERENCES users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS project_versions_recent ON project_versions (project_id, created_at DESC);
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS branch_of uuid REFERENCES projects(id) ON DELETE SET NULL;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS branch_name text;
+CREATE TABLE IF NOT EXISTS market_items (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  author_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  kind text NOT NULL,
+  name text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  tags text[] NOT NULL DEFAULT '{}',
+  visibility text NOT NULL DEFAULT 'workspace',
+  data jsonb NOT NULL,
+  installs int NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_items_public ON market_items (visibility, created_at DESC);
+CREATE TABLE IF NOT EXISTS plugins (
+  id uuid PRIMARY KEY,
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  slug text NOT NULL,
+  manifest jsonb NOT NULL,
+  code text NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
+  installed_by uuid REFERENCES users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, slug)
+)`,
+  },
 ];
