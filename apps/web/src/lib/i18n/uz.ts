@@ -218,8 +218,6 @@ export const uz: Partial<Dict> = {
   "audit.title": "Audit jurnali",
   "audit.subtitle": "Har bir kirish, maxfiy kalitni ochish, eksport, joylashtirish va sozlama o‘zgarishi.",
   "audit.loadMore": "Yana yuklash",
-  "planned.title": "{n}-bosqichda keladi",
-  "planned.body": "Bu modul yo‘l xaritasining bir qismi. Uning navigatsiyasi va buyruqlar palitrasidagi yozuvlari hozirdan ro‘yxatdan o‘tgan; to‘liq imkoniyatlar {n}-bosqichda chiqadi.",
   "onboard.1.title": "Boshqaruv panelingizga xush kelibsiz",
   "onboard.1.body": "Bu yerdagi hamma narsa funksiya — ular {n} tadan ortiq. Istalgan joyda Ctrl/⌘ + K ni bosib qidiring va ishga tushiring.",
   "onboard.2.title": "Vizual yoki kod orqali yarating",

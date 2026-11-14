@@ -16,7 +16,6 @@ export interface ModuleDef {
   plannedFeatures?: string[];
 }
 
-const Planned = lazy(() => import("./planned/PlannedPage"));
 
 export const MODULES: ModuleDef[] = [
   { id: "home", path: "/", labelKey: "nav.home", icon: I.IconHome, group: "create", phase: 1, component: lazy(() => import("./home/HomePage")) },

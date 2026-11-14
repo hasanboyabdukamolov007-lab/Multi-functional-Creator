@@ -20,6 +20,8 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @mfc/web test
       - run: pnpm build
+      - name: Vercel bundle builds
+        run: node scripts/vercel-build.mjs
 
   desktop:
     name: Desktop app (Rust)

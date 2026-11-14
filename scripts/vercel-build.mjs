@@ -36,8 +36,9 @@ await build({
   format: "esm",
   target: "node22",
   sourcemap: "linked",
-  // The embedded database is never used on Vercel (DATABASE_URL is required there).
-  external: ["@electric-sql/pglite", "pg-native"],
+  // The embedded database is never used on Vercel (DATABASE_URL is required there). ssh2's native add-ons are
+  // optional (loaded in try/catch with a pure-JS fallback), so they stay out of the bundle.
+  external: ["@electric-sql/pglite", "pg-native", "cpu-features", "*.node"],
   banner: {
     js: [
       'import { createRequire as __mfcCreateRequire } from "node:module";',

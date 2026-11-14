@@ -217,8 +217,6 @@ export const en = {
   "audit.title": "Audit log",
   "audit.subtitle": "Every sign-in, secret reveal, export, deploy and settings change.",
   "audit.loadMore": "Load more",
-  "planned.title": "Coming in phase {n}",
-  "planned.body": "This module is part of the roadmap. Its navigation and command-palette entries are registered now; the full feature set ships in phase {n}.",
   "onboard.1.title": "Welcome to your control panel",
   "onboard.1.body": "Everything here is a function — over {n} of them. Press Ctrl/⌘ + K anywhere to search and run one.",
   "onboard.2.title": "Build visually or in code",
