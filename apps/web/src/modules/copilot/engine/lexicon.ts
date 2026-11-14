@@ -208,6 +208,8 @@ export const MODULE_WORDS: Lex = {
   plugins: ["plugin", "plagin", "плагин"],
   audit: ["audit", "log", "jurnal", "журнал", "аудит"],
   settings: ["settings", "preferences", "sozlama", "настройк"],
+  academy: ["academy", "course", "tutorials", "lessons", "akademiya", "kurs", "darslar", "академи", "курс", "уроки"],
+  lab: ["forge lab", "lab", "laboratoriya", "лаборатор"],
 };
 
 export const LANG_NAMES: Lex = {

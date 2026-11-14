@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KB, search } from "./knowledge";
+import { KB, search, addEntries } from "./knowledge";
 import { fixCode, detectLang, extractCode } from "./fixer";
 import { emptyNB, predict, train } from "./classifier";
 import { paraphrase, experimentRound } from "./trainer";
@@ -145,5 +145,25 @@ describe("quiz topics", () => {
     expect(q.quiz!.questions.every((x) => ["auth", "sql-injection", "xss", "csrf-cors", "ssrf", "secrets"].includes(x.entry))).toBe(true);
     const ru = respond("викторина по базам данных", "ru")!;
     expect(ru.quiz!.questions.length).toBeGreaterThan(0);
+  });
+});
+
+import { buildCourse } from "../../academy/course";
+describe("academy course", () => {
+  it("generates trilingual tracks and lessons from the knowledge base", () => {
+    for (const lang of ["en", "uz", "ru"] as const) {
+      const c = buildCourse(lang);
+      expect(c.tracks.length).toBeGreaterThanOrEqual(10);
+      expect(c.stats.lessons).toBeGreaterThanOrEqual(50);
+      const flex = c.tracks.flatMap((t) => t.lessons).find((l) => l.id === "flexbox")!;
+      expect(flex.scenes[0].kind).toBe("title");
+      expect(flex.scenes.some((s) => s.kind === "quiz")).toBe(true);
+      expect(flex.scenes.at(-1)!.kind).toBe("outro");
+    }
+  });
+  it("changes version when knowledge changes (self-updating)", () => {
+    const v1 = buildCourse("en").version;
+    addEntries([{ id: "zz-test-topic", cat: "web", title: { en: "Test topic", uz: "Test", ru: "Тест" }, kw: ["zz"], sum: { en: "s", uz: "s", ru: "s" }, points: ["p"] }]);
+    expect(buildCourse("en").version).not.toBe(v1);
   });
 });

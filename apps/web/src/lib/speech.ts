@@ -48,8 +48,11 @@ export function speak(text: string, locale: Locale, opts: { rate?: number; pitch
     if (voice) u.voice = voice;
     u.rate = opts.rate ?? 1;
     u.pitch = opts.pitch ?? 1;
-    u.onend = () => resolve();
-    u.onerror = () => resolve();
+    // Some devices have no voice for a language and never fire onend — don't let callers hang.
+    const words = text.split(/\s+/).length;
+    const guard = setTimeout(resolve, Math.max(3000, (words / 2.6 / (opts.rate ?? 1)) * 1000 + 2500));
+    u.onend = () => (clearTimeout(guard), resolve());
+    u.onerror = () => (clearTimeout(guard), resolve());
     speechSynthesis.speak(u);
   });
 }

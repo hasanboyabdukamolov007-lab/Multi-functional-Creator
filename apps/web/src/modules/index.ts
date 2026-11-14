@@ -23,6 +23,7 @@ export const MODULES: ModuleDef[] = [
   { id: "builder", path: "/builder", labelKey: "nav.builder", icon: I.IconBuilder, group: "create", phase: 1, keywords: ["site", "page", "panel", "app", "drag", "drop"], component: lazy(() => import("./builder/BuilderPage")) },
   { id: "studio", path: "/studio", labelKey: "nav.studio", icon: I.IconStudio, group: "create", phase: 1, keywords: ["3d", "model", "animate", "three"], component: lazy(() => import("./studio/StudioPage")) },
   { id: "data", path: "/data", labelKey: "nav.data", icon: I.IconData, group: "create", phase: 1, keywords: ["api", "sql", "database", "postman", "workflow", "automation", "schema", "webhook", "cron"], component: lazy(() => import("./data/DataPage")) },
+  { id: "academy", path: "/academy", labelKey: "nav.academy", icon: I.IconAcademy, group: "create", phase: 1, keywords: ["course", "learn", "tutorial", "video", "lessons", "training", "kurs", "dars", "курс", "уроки"], component: lazy(() => import("./academy/AcademyPage")) },
   { id: "lab", path: "/lab", labelKey: "nav.lab", icon: I.IconLab, group: "create", phase: 1, keywords: ["forge", "learning", "brain", "knowledge", "ai", "training", "experiments"], component: lazy(() => import("./lab/LabPage")) },
   {
     id: "motion", path: "/motion", labelKey: "nav.motion", icon: I.IconMotion, group: "create", phase: 4, component: Planned,
