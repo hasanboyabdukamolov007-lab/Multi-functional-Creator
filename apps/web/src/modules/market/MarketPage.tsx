@@ -13,7 +13,7 @@ import * as I from "../../ui/icons";
 
 const KINDS = ["template", "scene", "schema", "api", "workflow", "brand", "plugin"] as const;
 type Kind = (typeof KINDS)[number];
-interface Item { id: string; kind: Kind; name: string; description: string; tags: string[]; visibility: "workspace" | "public"; installs: number; created_at: string; mine: boolean; author: string | null; workspace: string }
+interface Item { id: string; kind: Kind; name: string; description: string; tags: string[]; visibility: "workspace" | "public"; installs: number; created_at: string; mine: boolean; author: string | null; workspace: string; permissions?: string[] | null }
 const KIND_OF_PROJECT: Partial<Record<ProjectKind, Kind>> = { site: "template", panel: "template", app: "template", scene3d: "scene", db: "schema", api: "api" };
 
 function Publish({ t, onDone }: { t: (k: string, v?: Record<string, string | number>) => string; onDone: () => void }) {
@@ -85,6 +85,8 @@ export default function MarketPage() {
   const reload = () => void api.get<{ items: Item[] }>(ws(`/market?${new URLSearchParams({ ...(kind ? { kind } : {}), ...(scope ? { scope } : {}), ...(q ? { q } : {}) })}`)).then((r) => setItems(r.items)).catch(() => setItems([]));
   useEffect(reload, [kind, scope, q]); // eslint-disable-line react-hooks/exhaustive-deps
   const install = async (it: Item) => {
+    // Plugins run code: show exactly what it may do, and that nobody reviewed it, before installing.
+    if (it.kind === "plugin" && !(await confirmDialog(t("market.pluginConfirm", { name: it.name, who: it.mine ? t("market.team") : it.workspace, perms: (it.permissions ?? []).join(", ") || "—" }), { danger: !it.mine }))) return;
     const r = await api.post<{ kind: Kind; project?: { id: string; kind: ProjectKind }; workflowId?: string; pluginId?: string; data?: Record<string, unknown> }>(ws(`/market/${it.id}/install`));
     toast(t("market.installed", { name: it.name }), "success");
     if (r.project) navigate(editorPath(r.project.kind, r.project.id));

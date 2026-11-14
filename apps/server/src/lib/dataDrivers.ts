@@ -46,7 +46,9 @@ export async function runQuery(kind: DataKind, url: string, input: { sql?: strin
       if (readOnly) await client.query("BEGIN READ ONLY");
       type PgResult = { fields?: Array<{ name: string }>; rows?: unknown[]; rowCount?: number | null; command?: string };
       // A multi-statement query returns one result per statement; show the last one.
-      const res = (await client.query({ text: input.sql ?? "", rowMode: "array" })) as unknown as PgResult | PgResult[];
+      // Read-only runs use the extended protocol, which accepts exactly one statement: "COMMIT; DELETE …"
+      // can't end the read-only transaction and then write.
+      const res = (await client.query({ text: input.sql ?? "", rowMode: "array", ...(readOnly ? { queryMode: "extended" as const } : {}) })) as unknown as PgResult | PgResult[];
       const last: PgResult = Array.isArray(res) ? res[res.length - 1] : res;
       if (readOnly) await client.query("ROLLBACK");
       const fields: string[] = (last.fields ?? []).map((f) => f.name);

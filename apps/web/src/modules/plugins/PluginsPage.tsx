@@ -68,7 +68,7 @@ mfc.studio.add({ shape, position: [x,y,z], color, scale })           // permissi
 mfc.storage.get(key) / set(key, value)                               // permission: storage (this device)
 mfc.http.send({ method, url, headers, body })                        // permission: http (server proxy, SSRF-guarded)
 
-Plugins run in a sandboxed iframe with no network, cookies or DOM access; every call is checked against the manifest's permissions and times out after 10 s.`}</pre>
+Plugins run in a sandboxed iframe with no direct network, cookie or DOM access; every call is checked against the manifest's permissions and times out after 10 s. http.send goes through the server proxy as plain text: vault secrets are never filled in for plugins.`}</pre>
             </details>
           </div>
         )}

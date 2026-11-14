@@ -200,6 +200,16 @@ async function s3(files: DeployFile[], ctx: DeployContext): Promise<DeployResult
 }
 
 // ---------------------------------------------------------------------------------------------- SSH / SFTP
+/** Quote one argument for a POSIX shell. */
+export const shq = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`;
+
+/** Deploy file paths must be plain relative paths: no "..", no absolute paths, no quotes or control characters. */
+export function assertSafeRelPath(p: string): void {
+  if (!p || p.startsWith("/") || p.split("/").some((seg) => seg === ".." || seg === "") || !/^[\w.\- /@+~()]+$/.test(p)) {
+    throw new Error(`Refusing to deploy a file with an unsafe path: ${JSON.stringify(p.slice(0, 120))}`);
+  }
+}
+
 export function nginxConfig(domain: string, root: string): string {
   return `server {
   listen 80;
@@ -259,13 +269,14 @@ async function ssh(files: DeployFile[], ctx: DeployContext): Promise<DeployResul
     );
   try {
     if (patch.hostFingerprint) ctx.log(`First connection — host key SHA256:${patch.hostFingerprint} saved (future deploys refuse a different key).`);
+    for (const f of files) assertSafeRelPath(f.path);
     const dirs = [...new Set(files.map((f) => f.path.split("/").slice(0, -1).join("/")).filter(Boolean))];
-    await exec(`mkdir -p '${release}' ${dirs.map((d) => `'${release}/${d}'`).join(" ")}`);
+    await exec(`mkdir -p ${shq(release)} ${dirs.map((d) => shq(`${release}/${d}`)).join(" ")}`);
     const sftp = await new Promise<import("ssh2").SFTPWrapper>((resolve, reject) => conn.sftp((e, s) => (e ? reject(e) : resolve(s))));
     ctx.log(`Uploading ${files.length} files to ${release}…`);
     for (const f of files) await new Promise<void>((resolve, reject) => sftp.writeFile(`${release}/${f.path}`, f.data, (e) => (e ? reject(e) : resolve())));
     // Atomic switch, then keep the five most recent releases.
-    await exec(`ln -sfn '${release}' '${root}/current.tmp' && mv -Tf '${root}/current.tmp' '${root}/current' && ls -1dt '${root}'/releases/* | tail -n +6 | xargs -r rm -rf`);
+    await exec(`ln -sfn ${shq(release)} ${shq(`${root}/current.tmp`)} && mv -Tf ${shq(`${root}/current.tmp`)} ${shq(`${root}/current`)} && ls -1dt ${shq(root)}/releases/* | tail -n +6 | xargs -r rm -rf`);
     ctx.log(`Switched ${root}/current → ${release.split("/").pop()}.`);
     if (ctx.config.domain) {
       ctx.log(`nginx site for ${ctx.config.domain}:\n${nginxConfig(ctx.config.domain, root)}`);

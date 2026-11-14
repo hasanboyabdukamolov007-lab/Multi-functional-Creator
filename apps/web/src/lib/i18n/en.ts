@@ -831,6 +831,7 @@ export const en = {
   "devices.thisApp": "This app",
   "devices.appLock": "Lock with Face ID / fingerprint when opening the app",
   "devices.changeServer": "Change server",
+  "market.pluginConfirm": "Install the plugin “{name}”? It was published by {who} and hasn't been reviewed. It will be allowed to: {perms}. Plugins never see your vault secrets.",
 };
 
 export type Dict = typeof en;

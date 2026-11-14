@@ -115,9 +115,10 @@ async function hostCall(p: InstalledPlugin, method: string, args: unknown[]): Pr
       localStorage.setItem(`mfc.plugin.${p.slug}.${String(args[0])}`, JSON.stringify(args[1]).slice(0, 100_000));
       return true;
     case "http.send": {
-      // Goes through the server's SSRF-guarded proxy with the user's own permissions.
+      // Goes through the server's SSRF-guarded proxy. Templating is off: a plugin must never be able to
+      // make the server fill in vault secrets ({{ secrets.NAME }}) and send them to the plugin's own URL.
       const r = args[0] as { method?: string; url: string; headers?: Record<string, string>; body?: string };
-      return api.post(ws("/http/send"), { method: r.method ?? "GET", url: r.url, headers: r.headers ?? {}, body: r.body ?? "", environment: "development" });
+      return api.post(ws("/http/send"), { method: r.method ?? "GET", url: String(r.url), headers: r.headers ?? {}, body: r.body ?? "", environment: "development", templating: false });
     }
   }
 }

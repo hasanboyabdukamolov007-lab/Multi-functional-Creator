@@ -15,6 +15,8 @@ const RequestBody = z.object({
   headers: z.record(z.string(), z.string()).default({}),
   body: z.string().max(1024 * 1024).default(""),
   environment: z.enum(ENVIRONMENTS).default("development"),
+  /** false = send the text exactly as given, never filling in {{ secrets.NAME }} (used for plugins). */
+  templating: z.boolean().default(true),
 });
 const SavedBody = RequestBody.extend({ name: z.string().trim().min(1).max(120) });
 
@@ -28,9 +30,13 @@ export const httpRoutes: FastifyPluginAsync = async (app) => {
     const secrets = secretResolver(db, ring, a.workspaceId, body.environment);
     let url: string, headers: Record<string, string>, payload: string;
     try {
-      url = await renderString(body.url, {}, secrets.resolve);
-      headers = await renderRecord(body.headers, {}, secrets.resolve);
-      payload = await renderString(body.body, {}, secrets.resolve);
+      if (body.templating) {
+        url = await renderString(body.url, {}, secrets.resolve);
+        headers = await renderRecord(body.headers, {}, secrets.resolve);
+        payload = await renderString(body.body, {}, secrets.resolve);
+      } else {
+        ({ url, headers, body: payload } = body);
+      }
     } catch (e) {
       throw new HttpError(400, (e as Error).message, "template");
     }

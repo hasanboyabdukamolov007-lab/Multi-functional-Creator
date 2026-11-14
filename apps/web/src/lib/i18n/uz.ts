@@ -833,4 +833,5 @@ export const uz: Partial<Dict> = {
   "devices.thisApp": "Shu ilova",
   "devices.appLock": "Ilovani ochishda Face ID / barmoq izi bilan qulflash",
   "devices.changeServer": "Serverni almashtirish",
+  "market.pluginConfirm": "“{name}” plaginini o‘rnatasizmi? Uni {who} nashr qilgan va u tekshirilmagan. Unga ruxsat beriladi: {perms}. Plaginlar seyfdagi sirlaringizni hech qachon ko‘rmaydi.",
 };

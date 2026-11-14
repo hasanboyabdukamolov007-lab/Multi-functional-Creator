@@ -29,7 +29,7 @@ export const marketRoutes: FastifyPluginAsync = async (app) => {
     const a = requirePerm(req, "projects.read");
     const q = req.query as { kind?: string; q?: string; scope?: string };
     const rows = await db.query(
-      `SELECT i.id, i.kind, i.name, i.description, i.tags, i.visibility, i.installs, i.created_at, i.workspace_id = $1 AS mine, coalesce(u.name, split_part(u.email, '@', 1)) AS author, w.name AS workspace
+      `SELECT i.id, i.kind, i.name, i.description, i.tags, i.visibility, i.installs, i.created_at, i.workspace_id = $1 AS mine, CASE WHEN i.kind = 'plugin' THEN i.data->'manifest'->'permissions' END AS permissions, coalesce(u.name, split_part(u.email, '@', 1)) AS author, w.name AS workspace
        FROM market_items i LEFT JOIN users u ON u.id = i.author_id LEFT JOIN workspaces w ON w.id = i.workspace_id
        WHERE (i.workspace_id = $1 OR i.visibility = 'public')
          AND ($2::text IS NULL OR i.kind = $2)

@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { signS3, zipFiles, nginxConfig } from "./lib/deployers.js";
+import { signS3, zipFiles, nginxConfig, shq, assertSafeRelPath } from "./lib/deployers.js";
 
 describe("S3 SigV4 signer", () => {
   it("matches AWS's published test vector (GET bucket, list objects)", () => {
@@ -254,3 +254,13 @@ describe("deploy targets (mock providers)", () => {
     expect(st.errors[0]).toMatchObject({ message: "TypeError: x is undefined", count: 1, stack: "at menu.js:10:5" });
   });
 });
+
+describe("ssh deploy path safety", () => {
+  it("quotes shell arguments and refuses unsafe file paths", () => {
+    expect(shq("/var/www/site")).toBe("'/var/www/site'");
+    expect(shq("a'b; rm -rf ~")).toBe("'a'\\''b; rm -rf ~'");
+    for (const ok of ["index.html", "about/index.html", "assets/app-1.2.js", "img/My photo (1).png"]) expect(() => assertSafeRelPath(ok)).not.toThrow();
+    for (const bad of ["../etc/passwd", "/abs.html", "a//b", "x'$(reboot)'.html", "a;b.html", "a\nb", ""]) expect(() => assertSafeRelPath(bad)).toThrow(/unsafe path/);
+  });
+});
+

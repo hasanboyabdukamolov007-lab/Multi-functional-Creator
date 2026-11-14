@@ -112,6 +112,11 @@ describe("guarded fetch, API tester and workflows", () => {
     expect(r.json().body).toContain("•••");
     const missing = await app.inject({ method: "POST", url: `/api/w/${ws}/http/send`, headers, payload: { method: "GET", url: `${base}/x`, headers: { Authorization: "{{ secrets.NOPE }}" } } });
     expect(missing.statusCode).toBe(400);
+    // Plugins send with templating off: placeholders go out literally, secrets are never filled in.
+    const raw = await app.inject({ method: "POST", url: `/api/w/${ws}/http/send`, headers, payload: { method: "POST", url: `${base}/echo`, headers: { Authorization: "Bearer {{ secrets.API_TOKEN }}", "content-type": "application/json" }, body: '{"token":"{{ secrets.API_TOKEN }}"}', templating: false } });
+    expect(raw.statusCode).toBe(200);
+    expect(seen.at(-1)!.auth).toBe("Bearer {{ secrets.API_TOKEN }}");
+    expect(JSON.stringify(seen.at(-1))).not.toContain("tok_super_secret_123");
   });
 
   it("runs workflows: http step, branching, variables, secrets redacted in logs, webhooks and schedules", async () => {
@@ -195,6 +200,10 @@ describe.skipIf(!process.env.TEST_PG_URL)("data browser (real PostgreSQL)", () =
     const ro = await q("DELETE FROM mfc_items");
     expect(ro.statusCode).toBe(400);
     expect(ro.json().error).toMatch(/read-only/i);
+    // Ending the read-only transaction inside the query must not let a write through.
+    const escape = await q("COMMIT; DELETE FROM mfc_items");
+    expect(escape.statusCode).toBe(400);
+    expect((await q("SELECT count(*)::int AS n FROM mfc_items")).json().rows).toEqual([[2]]);
     const schema = (await app.inject({ method: "GET", url: `/api/w/${ws}/data/connections/${conn}/schema`, headers })).json().tables;
     expect(schema.find((t: { name: string }) => t.name === "public.mfc_items").columns.map((c: { name: string }) => c.name)).toEqual(["id", "name"]);
     // Reverse engineering: primary and foreign keys come back with the columns.

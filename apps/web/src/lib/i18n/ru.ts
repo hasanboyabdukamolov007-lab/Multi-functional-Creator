@@ -833,4 +833,5 @@ export const ru: Partial<Dict> = {
   "devices.thisApp": "Это приложение",
   "devices.appLock": "Блокировать Face ID / отпечатком при открытии",
   "devices.changeServer": "Сменить сервер",
+  "market.pluginConfirm": "Установить плагин «{name}»? Его опубликовал {who}, проверку он не проходил. Ему будет разрешено: {perms}. Плагины никогда не видят секреты из хранилища.",
 };
