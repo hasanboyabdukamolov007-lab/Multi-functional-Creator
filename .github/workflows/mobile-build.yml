@@ -1,0 +1,36 @@
+# Cloud builds of the Android and iOS apps with Expo Application Services (EAS).
+# One-time setup: create an Expo account, run `npx eas-cli@latest init` in apps/mobile (adds the project id to
+# app.json), and add an EXPO_TOKEN repository secret (expo.dev → Account settings → Access tokens).
+name: Mobile build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "android, ios or all"
+        default: android
+        required: true
+      profile:
+        description: "EAS build profile (preview = installable APK, production = store bundles)"
+        default: preview
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait

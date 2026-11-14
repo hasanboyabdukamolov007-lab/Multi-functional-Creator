@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-functional Creator</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand"><img src="logo.svg" alt="" width="40" height="40" /> <span>Multi-functional Creator</span></div>
+      <h1 data-i18n="title">Connect to your panel</h1>
+      <p class="muted" data-i18n="subtitle">Enter the address of your panel server — the same one you open in the browser.</p>
+      <form id="form">
+        <label for="url" data-i18n="label">Server address</label>
+        <input id="url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="panel.example.com" required autofocus />
+        <div class="examples">
+          <button type="button" class="chip" data-url="http://localhost:8787">localhost:8787</button>
+          <button type="button" class="chip" data-url="http://localhost:5173">localhost:5173 (dev)</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <div class="row">
+          <button id="go" class="btn primary" type="submit" data-i18n="connect">Connect</button>
+          <button id="anyway" class="btn" type="button" hidden data-i18n="anyway">Connect anyway</button>
+        </div>
+      </form>
+      <p class="hint" data-i18n="hint">Sign in with the 6-digit code from the sign-in email. Change the server later from the Server menu.</p>
+      <select id="lang" aria-label="Language">
+        <option value="en">English</option>
+        <option value="uz">O‘zbekcha</option>
+        <option value="ru">Русский</option>
+      </select>
+    </main>
+    <script src="connect.js"></script>
+  </body>
+</html>

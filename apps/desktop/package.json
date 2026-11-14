@@ -1,0 +1,14 @@
+{
+  "name": "@mfc/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-functional Creator for Windows, macOS and Linux (Tauri 2).",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "tauri icon icon-source.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

@@ -3,7 +3,8 @@
  *  - Mobile (Expo, react-native-webview): the app injects `window.ReactNativeWebView` and talks over postMessage.
  *    It hands us its Expo push token (we register it with our own session cookie), opens notification links,
  *    and saves files we can't download inside a WebView.
- *  - Desktop (Tauri): the window loads this server directly; the shell adds "MFCDesktop" to the user agent.
+ *  - Desktop (Tauri): the window loads this server directly; the shell defines `window.__MFC_DESKTOP__`
+ *    before the page runs. It gets no IPC access — downloads and external links are handled natively.
  */
 import { api } from "./api";
 
@@ -14,6 +15,7 @@ declare global {
   interface Window {
     ReactNativeWebView?: RNWebView;
     __mfcNative?: (msg: NativeMessage) => void;
+    __MFC_DESKTOP__?: { version: string };
   }
 }
 type NativeMessage =
@@ -22,7 +24,7 @@ type NativeMessage =
   | { type: "saved"; name: string };
 
 export const isMobileShell = () => typeof window !== "undefined" && !!window.ReactNativeWebView;
-export const isDesktopShell = () => typeof navigator !== "undefined" && /MFCDesktop/.test(navigator.userAgent);
+export const isDesktopShell = () => typeof window !== "undefined" && !!window.__MFC_DESKTOP__;
 export const shellName = () => (isMobileShell() ? "mobile" : isDesktopShell() ? "desktop" : "web");
 
 export function postToNative(msg: Record<string, unknown>) {

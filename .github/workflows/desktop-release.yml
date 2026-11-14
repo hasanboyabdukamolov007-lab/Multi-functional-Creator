@@ -1,0 +1,56 @@
+# Builds installers for Windows (.msi/.exe), macOS (.dmg, Apple Silicon + Intel) and Linux (.deb/.rpm/.AppImage)
+# and attaches them to a draft GitHub release. Run it from the Actions tab, or push a tag like desktop-v0.1.0.
+# Optional signing: set APPLE_* / TAURI_SIGNING_* secrets as described in the Tauri docs.
+name: Desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - name: Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Install the Tauri CLI
+        working-directory: apps/desktop
+        run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: desktop-v__VERSION__
+          releaseName: Multi-functional Creator desktop v__VERSION__
+          releaseBody: Download the installer for your system below, open it, and enter your panel's address.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

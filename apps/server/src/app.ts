@@ -154,13 +154,15 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(pushRoutes, { prefix: "/api/push" });
 
   // What the web, desktop and mobile clients need to know about this server.
-  app.get("/api/app-info", async () => ({
+  // Public and credential-free, so the desktop / mobile connect screens may read it cross-origin.
+  app.get("/api/app-info", async (_req, reply) => (reply.header("access-control-allow-origin", "*"), {
     name: "Multi-functional Creator",
     version: APP_VERSION,
     billing: !!config.billing.stripeKey,
     downloads: config.downloads,
     signInCode: true,
   }));
+  app.options("/api/app-info", async (_req, reply) => reply.header("access-control-allow-origin", "*").header("access-control-allow-methods", "GET").status(204).send());
 
   if (config.scheduler) {
     const stop = startScheduler({ db, ring, mailer, config }, log);
