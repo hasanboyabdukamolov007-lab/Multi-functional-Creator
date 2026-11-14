@@ -9,6 +9,7 @@ import { toast } from "../../lib/ui";
 import { runFunction } from "../../lib/registry";
 import * as I from "../../ui/icons";
 import { canListen, canSpeak, listen, speak, stopSpeaking } from "../../lib/speech";
+import { learnConfirmed, rate, recordAnswer } from "./brain";
 
 type Block = { type: string; text?: string; thinking?: string; name?: string; id?: string; input?: unknown; content?: unknown; tool_use_id?: string; from?: { model?: string }; to?: { model?: string } };
 
@@ -95,7 +96,87 @@ function AssistantBlocks({ blocks, toolRuns }: { blocks: Block[]; toolRuns: Reco
   );
 }
 
-function ForgeSteps({ msg, running }: { msg: ForgeMsg; running: boolean }) {
+function QuizBlock({ msg, index }: { msg: ForgeMsg; index: number }) {
+  const c = useCopilot();
+  const locale = useI18n((s) => s.locale);
+  const answers = msg.answers ?? {};
+  if (!msg.quiz) return null;
+  const done = Object.keys(answers).length;
+  const score = msg.quiz.questions.filter((q, i) => answers[i] === q.answer).length;
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      {msg.quiz.questions.map((q, i) => {
+        const chosen = answers[i];
+        return (
+          <div key={i} className="card col" style={{ gap: 6, padding: 10 }}>
+            <strong className="small">{i + 1}. {q.q}</strong>
+            {q.options.map((o, j) => {
+              const state = chosen === undefined ? "" : j === q.answer ? "correct" : j === chosen ? "wrong" : "";
+              return (
+                <button
+                  key={j}
+                  className={`quiz-option ${state}`}
+                  disabled={chosen !== undefined}
+                  onClick={() => {
+                    c.patchForge(index, { answers: { ...answers, [i]: j } });
+                    recordAnswer(q.entry, j === q.answer);
+                  }}
+                >
+                  {String.fromCharCode(65 + j)}. {o}
+                </button>
+              );
+            })}
+            {chosen !== undefined && <div className="small muted">{chosen === q.answer ? "✅ " : "❌ "}{q.why}</div>}
+          </div>
+        );
+      })}
+      {done === msg.quiz.questions.length && (
+        <div className="badge badge-accent" style={{ alignSelf: "flex-start" }}>
+          {locale === "uz" ? `Natija: ${score}/${done}` : locale === "ru" ? `Результат: ${score}/${done}` : `Score: ${score}/${done}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BrainExtras({ msg, index }: { msg: ForgeMsg; index: number }) {
+  const c = useCopilot();
+  const t = useT();
+  return (
+    <>
+      <QuizBlock msg={msg} index={index} />
+      {msg.actions?.length ? (
+        <div className="row wrap" style={{ gap: 6 }}>
+          {msg.actions.map((a, i) => (
+            <button
+              key={i}
+              className="btn btn-sm"
+              style={{ height: "auto", minHeight: 28, whiteSpace: "normal", textAlign: "left" }}
+              onClick={() => {
+                if (a.fn) {
+                  void runFunction(a.fn)
+                    .then(() => a.learnText && learnConfirmed(a.learnText, a.fn!))
+                    .catch((e: Error) => toast(e.message, "error"));
+                } else if (a.ask) void c.send(a.ask);
+              }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {msg.rate && (
+        <div className="row small muted" style={{ gap: 4 }}>
+          <button className={`icon-btn ${msg.rated === "up" ? "active" : ""}`} style={{ width: 26, height: 26 }} disabled={!!msg.rated} title={t("copilot.helpful")} aria-label={t("copilot.helpful")} onClick={() => (rate(msg.rate!, true), c.patchForge(index, { rated: "up" }))}>👍</button>
+          <button className={`icon-btn ${msg.rated === "down" ? "active" : ""}`} style={{ width: 26, height: 26 }} disabled={!!msg.rated} title={t("copilot.notHelpful")} aria-label={t("copilot.notHelpful")} onClick={() => (rate(msg.rate!, false), c.patchForge(index, { rated: "down" }))}>👎</button>
+          {msg.rated && <span>{t("copilot.learned")}</span>}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ForgeSteps({ msg, running, index }: { msg: ForgeMsg; running: boolean; index: number }) {
   // The first paragraph is the summary line ("Done. Here's what I did:"); it belongs above the steps.
   const hasSteps = (msg.steps ?? []).length > 0;
   const [head, ...rest] = msg.text.split("\n\n");
@@ -110,6 +191,7 @@ function ForgeSteps({ msg, running }: { msg: ForgeMsg; running: boolean }) {
         </div>
       ))}
       {(hasSteps ? rest.join("\n\n") : msg.text) ? <Md text={hasSteps ? rest.join("\n\n") : msg.text} /> : running && !hasSteps ? <div className="row small muted"><I.IconSpinner size={13} className="spin" /> Working…</div> : null}
+      {!running && <BrainExtras msg={msg} index={index} />}
     </div>
   );
 }
@@ -236,7 +318,7 @@ export default function CopilotPanel() {
             m.role === "user" ? (
               <div key={i} className="card" style={{ padding: "8px 12px", alignSelf: "flex-end", maxWidth: "90%", background: "var(--mfc-accent-soft)", whiteSpace: "pre-wrap" }}>{m.text}</div>
             ) : (
-              <ForgeSteps key={i} msg={m} running={c.running && i === c.forge.length - 1} />
+              <ForgeSteps key={i} index={i} msg={m} running={c.running && i === c.forge.length - 1} />
             ),
           )}
         {forge ? null : builtin

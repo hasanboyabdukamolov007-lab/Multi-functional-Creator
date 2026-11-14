@@ -21,6 +21,7 @@ import { httpRoutes } from "./routes/http.js";
 import { dataRoutes } from "./routes/data.js";
 import { workflowRoutes } from "./routes/workflows.js";
 import { publicRoutes } from "./routes/public.js";
+import { forgeRoutes } from "./routes/forge.js";
 import { startScheduler } from "./lib/workflows.js";
 
 export interface AppDeps {
@@ -131,6 +132,7 @@ export async function buildApp(config: Config, injected: Partial<AppDeps> = {}):
   await app.register(httpRoutes, { prefix: "/api/w/:workspaceId/http" });
   await app.register(dataRoutes, { prefix: "/api/w/:workspaceId/data" });
   await app.register(workflowRoutes, { prefix: "/api/w/:workspaceId/workflows" });
+  await app.register(forgeRoutes, { prefix: "/api/w/:workspaceId/forge" });
   await app.register(publicRoutes, { prefix: "/api" });
 
   if (config.scheduler) {

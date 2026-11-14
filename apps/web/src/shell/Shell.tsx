@@ -65,6 +65,14 @@ export function Shell() {
   const online = useNet((x) => x.online);
 
   useEffect(() => setNavigate((p) => navigate(p)), [navigate]);
+  // Forge's brain: load this workspace's learned memory and keep learning while the panel is open.
+  useEffect(() => {
+    if (!workspaceId) return;
+    void Promise.all([import("../modules/copilot/brain/memory"), import("../modules/copilot/brain/trainer")]).then(async ([m, tr]) => {
+      await m.useBrain.getState().load(workspaceId);
+      tr.startLearning();
+    });
+  }, [workspaceId]);
   useEffect(() => setModule(moduleForPath(location.pathname).id), [location.pathname, setModule]);
   // On phones the sidebar overlays content: start collapsed and close it after navigating.
   useEffect(() => {

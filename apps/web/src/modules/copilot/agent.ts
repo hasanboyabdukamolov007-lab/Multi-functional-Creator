@@ -5,6 +5,7 @@ import { ws, useSession } from "../../lib/session";
 import { load, remove, save } from "../../lib/storage";
 import { executeTool, panelContext, toolDefinitions } from "./tools";
 import { runForge, type StepResult } from "./engine/engine";
+import type { BrainAction, BrainQuiz } from "./brain";
 
 export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Effort = (typeof EFFORTS)[number];
@@ -13,6 +14,11 @@ export interface ForgeMsg {
   role: "user" | "forge";
   text: string;
   steps?: StepResult[];
+  actions?: BrainAction[];
+  quiz?: BrainQuiz;
+  rate?: { text: string; label?: string; entry?: string };
+  rated?: "up" | "down";
+  answers?: Record<number, number>;
 }
 
 export interface AiStatus {
@@ -60,6 +66,7 @@ interface CopilotState {
 
   loadStatus: () => Promise<void>;
   send: (text: string) => Promise<void>;
+  patchForge: (index: number, patch: Partial<ForgeMsg>) => void;
   stop: () => void;
   reset: () => void;
   setModel: (m: string) => void;
@@ -177,7 +184,7 @@ export const useCopilot = create<CopilotState>((set, get) => {
     };
     try {
       const reply = await runForge(text, (steps) => updateLast({ steps }));
-      updateLast({ text: reply.text, steps: reply.steps });
+      updateLast({ text: reply.text, steps: reply.steps, actions: reply.actions, quiz: reply.quiz, rate: reply.rate ?? { text } });
     } catch (e) {
       updateLast({ text: (e as Error).message });
     } finally {
@@ -232,6 +239,13 @@ export const useCopilot = create<CopilotState>((set, get) => {
       } catch {
         set({ status: null });
       }
+    },
+    patchForge: (index, patch) => {
+      const f = [...get().forge];
+      if (!f[index]) return;
+      f[index] = { ...f[index], ...patch };
+      set({ forge: f });
+      persist(get());
     },
     send: async (text) => {
       if (get().running || !text.trim()) return;

@@ -283,3 +283,25 @@ kbd, .kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; border: 1px s
 .skip-link { position: absolute; left: 8px; top: -60px; z-index: 500; background: var(--mfc-accent); color: var(--mfc-accent-text); padding: 8px 12px; border-radius: 8px; }
 .skip-link:focus { top: 8px; }
 .main:focus { outline: none; }
+.quiz-option { text-align: left; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--mfc-border); background: var(--mfc-bg); color: var(--mfc-text); cursor: pointer; font-size: 13px; }
+.quiz-option:hover:not(:disabled) { border-color: var(--mfc-accent); }
+.quiz-option:disabled { cursor: default; }
+.quiz-option.correct { border-color: var(--mfc-success); background: color-mix(in srgb, var(--mfc-success) 14%, transparent); }
+.quiz-option.wrong { border-color: var(--mfc-danger); background: color-mix(in srgb, var(--mfc-danger) 12%, transparent); }
+
+/* ---------- Charts (validated categorical pair: blue / orange) ---------- */
+.viz-root { --series-1: #2a78d6; --series-2: #eb6834; }
+html[data-scheme="dark"] .viz-root { --series-1: #3987e5; --series-2: #d95926; }
+.viz-s1 { --c: var(--series-1); }
+.viz-s2 { --c: var(--series-2); }
+.viz-line { stroke: var(--c); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz-dot { fill: var(--c); stroke: var(--mfc-surface); stroke-width: 2; }
+.viz-key { width: 12px; height: 3px; border-radius: 2px; background: var(--c); display: inline-block; }
+.viz-grid { stroke: var(--mfc-border); stroke-width: 1; opacity: .6; }
+.viz-crosshair { stroke: var(--mfc-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.viz-axis { fill: var(--mfc-muted); font-size: 11px; }
+.viz-label { fill: var(--mfc-text); font-size: 12px; font-weight: 600; }
+.viz-tip { position: absolute; top: 4px; transform: translateX(-50%); background: var(--mfc-elevated); border: 1px solid var(--mfc-border); border-radius: 8px; padding: 6px 10px; box-shadow: var(--mfc-shadow); pointer-events: none; white-space: nowrap; }
+.stat-tile { padding: 14px; }
+.stat-tile .stat-value { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.swatch { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--mfc-border); display: inline-block; }

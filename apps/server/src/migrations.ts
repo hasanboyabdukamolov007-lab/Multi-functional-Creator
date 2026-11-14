@@ -174,4 +174,13 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
 CREATE UNIQUE INDEX IF NOT EXISTS workflow_runs_schedule ON workflow_runs (workflow_id, scheduled_for) WHERE scheduled_for IS NOT NULL;
 CREATE INDEX IF NOT EXISTS workflow_runs_recent ON workflow_runs (workflow_id, started_at DESC)`,
   },
+  {
+    id: 5,
+    name: "forge-brain",
+    sql: `CREATE TABLE IF NOT EXISTS forge_brain (
+  workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  data jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`,
+  },
 ];

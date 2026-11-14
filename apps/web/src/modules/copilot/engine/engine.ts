@@ -14,8 +14,13 @@ import { vaultApi } from "../../vault/vaultApi";
 import { functionTitle } from "../../../shell/CommandPalette";
 import { plan, type Action, type PlanContext } from "./planner";
 import { generatePage, onColor } from "./pageGen";
+import { DOMAIN_COPY } from "./content";
 import { animationTracks, objectsFromSpecs } from "./sceneGen";
+import * as L from "./lexicon";
 import type { Lang } from "./lexicon";
+import type { BrainAction, BrainQuiz, BrainReply } from "../brain";
+// The brain (knowledge base, code doctor, learner) loads on first use so the panel starts fast.
+const loadBrain = () => Promise.all([import("../brain"), import("../brain/trainer")]).then(([b, tr]) => ({ ...b, houseStyle: tr.houseStyle, recommendPrimary: tr.recommendPrimary }));
 
 export interface StepResult {
   label: string;
@@ -25,6 +30,9 @@ export interface StepResult {
 export interface EngineReply {
   text: string;
   steps: StepResult[];
+  actions?: BrainAction[];
+  quiz?: BrainQuiz;
+  rate?: BrainReply["rate"];
 }
 
 /** Short-term memory so follow-ups like "make them gold" refer to what was just created. */
@@ -206,6 +214,21 @@ async function execute(a: Action, lang: Lang, steps: StepResult[], notes: string
       return;
     }
     case "page": {
+      // Learned design: the workspace's house style first, then palettes that won past experiments.
+      let learnedNote = "";
+      if (!a.spec.primary) {
+        const { houseStyle, recommendPrimary } = await loadBrain();
+        const hs = houseStyle();
+        const domainPrimary = (DOMAIN_COPY[a.spec.domain] ?? DOMAIN_COPY.saas).primary;
+        const better = recommendPrimary(a.spec.dark ?? !!(DOMAIN_COPY[a.spec.domain] ?? DOMAIN_COPY.saas).dark, { nearHex: domainPrimary });
+        if (hs.primary) {
+          a.spec.primary = hs.primary;
+          learnedNote = "house style";
+        } else if (better && better !== domainPrimary) {
+          a.spec.primary = better;
+          learnedNote = "tested palette";
+        }
+      }
       const g = generatePage(a.spec);
       if (a.newProject || !B().projectId) {
         await openBuilderProject(g.name, g.kind);
@@ -224,7 +247,7 @@ async function execute(a: Action, lang: Lang, steps: StepResult[], notes: string
       });
       memory.recentNodes = g.nodes.map((x) => x.id);
       ok(fmt(t.page, { type: a.spec.type, count: g.nodes.length }), `${a.spec.domain} · ${a.spec.lang}`);
-      ok(t.tokens, `${g.tokens.primary} · ${g.tokens.bg}`);
+      ok(t.tokens, `${g.tokens.primary} · ${g.tokens.bg}${learnedNote ? ` · learned: ${learnedNote}` : ""}`);
       notes.push(t.nextPage);
       return;
     }
@@ -434,6 +457,42 @@ async function execute(a: Action, lang: Lang, steps: StepResult[], notes: string
 /** Run one user message through Forge: plan, execute every step, and compose a reply. */
 export async function runForge(input: string, onStep?: (steps: StepResult[]) => void): Promise<EngineReply> {
   const p = plan(input, snapshot());
+  const { isKnowledgeRequest, noteGap, respond, suggestFunctions, learnConfirmed, recommendPrimary } = await loadBrain();
+  // "Surprise me" / "be creative": an original page from random domain + layout + an experimentally strong palette.
+  if (/(?<![\p{L}])(?:surprise me|be creative|something creative|random (?:site|page|design)|ijodiy|kutilmagan|hayratlantir|удиви|креатив|что-нибудь необычное)/iu.test(input)) {
+    const types = ["landing", "portfolio", "shop", "blog", "pricing", "comingSoon"] as const;
+    const domains = Object.keys(DOMAIN_COPY);
+    const dark = Math.random() < 0.5;
+    const spec = { type: types[Math.floor(Math.random() * types.length)], domain: domains[Math.floor(Math.random() * domains.length)], lang: p.lang, brand: null, primary: recommendPrimary(dark, { explore: true }), dark, include: ["testimonials", "faq"], exclude: [] };
+    p.actions = [{ kind: "page", spec, newProject: true }];
+  }
+  const concrete = p.actions.some((a) => !["unknown", "help", "function", "status"].includes(a.kind));
+  const text = L.normalize(input);
+  const creating = L.hasAny(text, L.tokenize(input), [...L.INTENT_WORDS.create, ...L.INTENT_WORDS.add]);
+  // Knowledge requests (explain / teach / quiz / compare / fix) go to the brain — unless the
+  // message is really a build command ("create a website for an online course").
+  if (isKnowledgeRequest(input) && !(concrete && creating)) {
+    const r = respond(input, p.lang);
+    if (r) return { text: r.text, steps: [], actions: r.actions, quiz: r.quiz, rate: r.rate };
+  }
+  if (p.actions.every((a) => a.kind === "unknown")) {
+    const r = respond(input, p.lang, true) ?? suggestFunctions(input, p.lang);
+    if (r) {
+      // A phrasing the user confirmed before: run it straight away.
+      if (!r.text && r.actions?.[0]?.fn) {
+        const fn = r.actions[0];
+        try {
+          const res = await runFunction(fn.fn!);
+          learnConfirmed(input, fn.fn!);
+          return { text: T[p.lang].done, steps: [{ label: fmt(T[p.lang].ran, { title: fn.label }), status: "ok", detail: res !== undefined && res !== null ? JSON.stringify(res).slice(0, 160) : "learned" }], rate: r.rate };
+        } catch (e) {
+          return { text: T[p.lang].failed, steps: [{ label: fn.label, status: "error", detail: (e as Error).message }] };
+        }
+      }
+      return { text: r.text, steps: [], actions: r.actions, quiz: r.quiz, rate: r.rate };
+    }
+    noteGap(input);
+  }
   const steps: StepResult[] = [];
   const notes: string[] = [];
   for (const a of p.actions) {
